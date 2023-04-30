@@ -487,8 +487,8 @@ void HandleGroupListRequest(CTCPRequestPacket& PTCPRequest)
 {
     uint8* data = PTCPRequest.GetData();
 
-    uint16 partyid      = ref<uint16>(data, 0x10);
-    uint16 allianceid   = ref<uint16>(data, 0x14);
+    uint32 partyid      = ref<uint32>(data, 0x10);
+    uint32 allianceid   = ref<uint32>(data, 0x14);
     uint32 linkshellid1 = ref<uint32>(data, 0x18);
     uint32 linkshellid2 = ref<uint32>(data, 0x1C);
 
@@ -667,10 +667,11 @@ void HandleAuctionHouseHistory(CTCPRequestPacket& PTCPRequest)
     uint16 ItemID = ref<uint16>(data, 0x12);
     uint8  stack  = ref<uint8>(data, 0x15);
 
-    CAHHistoryPacket PAHPacket(ItemID);
-
     CDataLoader             PDataLoader;
     std::vector<ahHistory*> HistoryList = PDataLoader.GetAHItemHystory(ItemID, stack != 0);
+    ahItem                  item        = PDataLoader.GetAHItemFromItemID(ItemID);
+
+    CAHHistoryPacket PAHPacket = CAHHistoryPacket(item, stack);
 
     for (auto& i : HistoryList)
     {

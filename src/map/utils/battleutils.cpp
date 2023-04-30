@@ -312,6 +312,14 @@ namespace battleutils
     }
 
     /************************************************************************
+     *  Load Distance Correction                                            *
+     ************************************************************************/
+    void LoadDistanceCorrection()
+    {
+        luautils::CacheLuaObjectFromFile("./scripts/globals/damage/distance_correction.lua");
+    }
+
+    /************************************************************************
      *  Clear Weapon Skills List                                             *
      ************************************************************************/
 
@@ -804,7 +812,7 @@ namespace battleutils
                 bool crit = battleutils::GetCritHitRate(PDefender, PAttacker, true) > xirand::GetRandomNumber(100);
 
                 // Dmg math.
-                float  DamageRatio = GetDamageRatio(PDefender, PAttacker, crit, 0.f, SLOT_MAIN, 0, false);
+                float  DamageRatio = GetDamageRatio(PDefender, PAttacker, crit, 1.f, SLOT_MAIN, 0, false);
                 uint16 dmg         = (uint32)((PDefender->GetMainWeaponDmg() + battleutils::GetFSTR(PDefender, PAttacker, SLOT_MAIN)) * DamageRatio);
                 dmg                = attackutils::CheckForDamageMultiplier(((CCharEntity*)PDefender), dynamic_cast<CItemWeapon*>(PDefender->m_Weapons[SLOT_MAIN]), dmg,
                                                                            PHYSICAL_ATTACK_TYPE::NORMAL, SLOT_MAIN);
@@ -1923,25 +1931,11 @@ namespace battleutils
              (PDefender->objtype == TYPE_MOB && PDefender->m_EcoSystem == ECOSYSTEM::BEASTMAN && PDefender->GetMJob() != JOB_MNK && PDefender->isInDynamis())) &&
             PDefender->PAI->IsEngaged())
         {
-            // http://wiki.ffxiclopedia.org/wiki/Talk:Parrying_Skill
-            // {(Parry Skill x .125) + ([Player Agi - Enemy Dex] x .125)} x Diff
+            float        defender_parry_skill = (float)(PDefender->GetSkill(SKILL_PARRY) + PDefender->getMod(Mod::PARRY) + PWeapon->getILvlParry());
+            CItemWeapon* weapon               = GetEntityWeapon(PAttacker, SLOT_MAIN);
+            uint16       attackSkill          = PAttacker->GetSkill((SKILLTYPE)(weapon ? weapon->getSkillType() : 0));
 
-            float skill = (float)(PDefender->GetSkill(SKILL_PARRY) + PDefender->getMod(Mod::PARRY) + PWeapon->getILvlParry());
-
-            float diff = 1.0f + ((PDefender->GetMLevel() - PAttacker->GetMLevel()) * 0.05f);
-
-            if (PWeapon != nullptr && PWeapon->isTwoHanded())
-            {
-                // two handed weapons get a bonus
-                diff += 0.1f;
-            }
-
-            float diffCorrect = std::clamp<float>(diff, 0.4f, 1.4f);
-
-            float dex = PAttacker->DEX();
-            float agi = PDefender->AGI();
-
-            auto parryRate = std::clamp<uint8>((uint8)(((skill * 0.125f) + ((agi - dex) * 0.125f)) * diffCorrect), 5, 20);
+            uint8 parryRate = std::clamp<uint8>((uint8)(20.0f + (defender_parry_skill - attackSkill) / 8.0f), 5, 30);
 
             // Issekigan grants parry rate bonus. From best available data, if you already capped out at 25% parry it grants another 25% bonus for ~50%
             // parry rate
@@ -2877,11 +2871,7 @@ namespace battleutils
             }
         }
 
-        // Bonus attack currently only from footwork
-        if (bonusAttPercent >= 1)
-        {
-            attack = static_cast<uint16>(attack * bonusAttPercent);
-        }
+        attack = static_cast<uint16>(attack * bonusAttPercent);
 
         // Wholly possible for DEF to be near 0 with the amount of debuffs/effects now.
         uint16 defense = PDefender->DEF() - ignoredDef;
@@ -4651,7 +4641,7 @@ namespace battleutils
 
                 if (PCurrentMob->m_HiPCLvl > 0 && PCurrentMob->PEnmityContainer->HasID(PSource->id))
                 {
-                    PCurrentMob->PEnmityContainer->UpdateEnmity(PSource, CE, VE);
+                    PCurrentMob->PEnmityContainer->UpdateEnmity(PSource, CE, VE, false, false, false);
                 }
             }
         }
@@ -4926,12 +4916,12 @@ namespace battleutils
                 if (!battleutils::IsAbsorbByShadow(PVictim, PAttacker))
                 {
                     // successful hit, add damage
-                    float AttMultiplerPercent = 0.f;
+                    float AttMultiplerPercent = 1.f;
 
                     // get jump attack bonus from gear
                     if (PAttacker->objtype == TYPE_PC)
                     {
-                        AttMultiplerPercent = PAttacker->getMod(Mod::JUMP_ATT_BONUS) / 100.f;
+                        AttMultiplerPercent = 1.f + PAttacker->getMod(Mod::JUMP_ATT_BONUS) / 100.f;
                     }
 
                     bool isGuarded = attackutils::IsGuarded(PAttacker, PVictim);
@@ -5022,7 +5012,7 @@ namespace battleutils
      *                                                                       *
      ************************************************************************/
 
-    void tryToCharm(CBattleEntity* PCharmer, CBattleEntity* PVictim)
+    bool tryToCharm(CBattleEntity* PCharmer, CBattleEntity* PVictim)
     {
         // Gear with Charm + does not affect the success rate of Charm, but increases the duration of the Charm.
         // Each +1 to Charm increases the duration of charm by 5%; +20 Charm doubles the duration of charm.
@@ -5036,7 +5026,7 @@ namespace battleutils
             if (((CMobEntity*)PVictim)->getMobMod(MOBMOD_CHARMABLE) == 0 || PVictim->PMaster != nullptr)
             {
                 PVictim->StatusEffectContainer->AddStatusEffect(new CStatusEffect(EFFECT_BIND, EFFECT_BIND, 1, 0, xirand::GetRandomNumber(1, 5)));
-                return;
+                return false;
             }
 
             // mob is charmable
@@ -5113,11 +5103,12 @@ namespace battleutils
 
             if (!TryCharm(PCharmer, PVictim))
             {
-                return;
+                return false;
             }
         }
 
         applyCharm(PCharmer, PVictim, std::chrono::seconds(CharmTime));
+        return true;
     }
 
     void applyCharm(CBattleEntity* PCharmer, CBattleEntity* PVictim, duration charmTime)
@@ -5396,12 +5387,7 @@ namespace battleutils
         }
         else
         {
-            damage           = HandleSevereDamage(PDefender, damage, false);
-            int16 absorbedMP = (int16)(damage * PDefender->getMod(Mod::ABSORB_DMG_TO_MP) / 100);
-            if (absorbedMP > 0)
-            {
-                PDefender->addMP(absorbedMP);
-            }
+            damage = HandleSevereDamage(PDefender, damage, false);
         }
 
         // When set mob will only take 0 or 1 damage
@@ -5457,12 +5443,7 @@ namespace battleutils
         }
         else
         {
-            damage           = HandleSevereDamage(PDefender, damage, false);
-            int16 absorbedMP = (int16)(damage * PDefender->getMod(Mod::ABSORB_DMG_TO_MP) / 100);
-            if (absorbedMP > 0)
-            {
-                PDefender->addMP(absorbedMP);
-            }
+            damage = HandleSevereDamage(PDefender, damage, false);
         }
 
         // When set mob will only take 0 or 1 damage
@@ -5597,7 +5578,7 @@ namespace battleutils
             // Issekigan is Known to Grant 300 CE per parry, but unknown how it effects VE (per bgwiki). So VE is left alone for now.
             // JP is known to give 10 VE per point
             uint16 jpBonus = static_cast<CCharEntity*>(PDefender)->PJobPoints->GetJobPointValue(JP_ISSEKIGAN_EFFECT) * 10;
-            static_cast<CMobEntity*>(PAttacker)->PEnmityContainer->UpdateEnmity(PDefender, 300, 0 + jpBonus, false);
+            static_cast<CMobEntity*>(PAttacker)->PEnmityContainer->UpdateEnmity(PDefender, 300, 0 + jpBonus, false, false);
         }
     }
 
@@ -5794,24 +5775,24 @@ namespace battleutils
      ************************************************************************/
     void assistTarget(CCharEntity* PChar, uint16 TargID)
     {
-        // get the player we want to assist
-        CBattleEntity* PlayerToAssist = (CBattleEntity*)PChar->GetEntity(TargID, TYPE_MOB | TYPE_PC);
-        if (PlayerToAssist != nullptr)
+        // get the entity we want to assist
+        CBattleEntity* EntityToAssist = (CBattleEntity*)PChar->GetEntity(TargID, TYPE_MOB | TYPE_PC);
+        if (EntityToAssist != nullptr)
         {
-            if (PlayerToAssist->objtype == TYPE_PC && PlayerToAssist->m_TargID != 0)
+            if (EntityToAssist->objtype == TYPE_PC && EntityToAssist->GetBattleTargetID() != 0)
             {
-                // get that players target (mob,player,pet only)
-                CBattleEntity* EntityToLockon = (CBattleEntity*)PChar->GetEntity(PlayerToAssist->m_TargID, TYPE_MOB | TYPE_PC | TYPE_PET);
+                // get that players engaged target
+                CBattleEntity* EntityToLockon = EntityToAssist->GetBattleTarget();
                 if (EntityToLockon != nullptr)
                 {
                     // lock on to the new target!
                     PChar->pushPacket(new CLockOnPacket(PChar, EntityToLockon));
                 }
             }
-            else if (PlayerToAssist->GetBattleTargetID() != 0)
+            else if (EntityToAssist->GetBattleTargetID() != 0)
             {
                 // lock on to the new target!
-                PChar->pushPacket(new CLockOnPacket(PChar, PlayerToAssist->GetBattleTarget()));
+                PChar->pushPacket(new CLockOnPacket(PChar, EntityToAssist->GetBattleTarget()));
             }
         }
     }
@@ -7174,9 +7155,6 @@ namespace battleutils
             dmgToMPMods += PDefender->getMod(Mod::COVER_TO_MP);
         }
 
-        // Get ABSORB_DMG_TO_MP mod
-        dmgToMPMods += PDefender->getMod(Mod::ABSORB_DMG_TO_MP);
-
         // Get ABSORB_PHYSDMG_TO_MP mod
         dmgToMPMods += PDefender->getMod(Mod::ABSORB_PHYSDMG_TO_MP);
 
@@ -7191,102 +7169,25 @@ namespace battleutils
 
     float GetRangedDistanceCorrection(CBattleEntity* PBattleEntity, float distance)
     {
-        CCharEntity* PChar = nullptr;
+        TracyZoneScoped;
 
-        if (PBattleEntity->objtype == TYPE_PC)
+        auto distanceCorrectionGetValue = lua["xi"]["damage"]["distanceCorrection"]["getValue"];
+        if (!distanceCorrectionGetValue.valid())
         {
-            PChar = (CCharEntity*)PBattleEntity;
-        }
-        else // Automaton
-        {
-            if (distance <= 3.0f) // Automaton will generally stay around 3' from the target.
-                return 1.0f;
-            if (distance <= 25.0f) // Beyond 3' linearly drop 1%/yalm
-                return 1.0f - (distance / 100.0f);
-
-            return 0.75f; // Cap at 0.75 modifier past 25 yalms
+            sol::error err = distanceCorrectionGetValue;
+            ShowError("battleutils::GetRangedDistanceCorrection: %s", err.what());
+            return 1.00f;
         }
 
-        if (PChar == nullptr)
+        auto result = distanceCorrectionGetValue(CLuaBaseEntity(PBattleEntity), distance);
+        if (!result.valid())
         {
-            return 1.0f; // Just in case PChar is null, then we will just return full damage.
+            sol::error err = result;
+            ShowError("battleutils::GetRangedDistanceCorrection: %s", err.what());
+            return 1.00f;
         }
 
-        uint8 RMainType = 0;
-        uint8 RMainSub  = 0;
-
-        CItemEquipment* PRangedSlot = PChar->getEquip(SLOT_RANGED);
-
-        if (PRangedSlot)
-        {
-            RMainType = ((CItemWeapon*)PRangedSlot)->getSkillType();
-            RMainSub  = ((CItemWeapon*)PRangedSlot)->getSubSkillType();
-        }
-
-        bool LongBowCurve  = (RMainType == 25 && RMainSub == 9);                                         // Longbows Only
-        bool CrossBowCurve = ((RMainType == 25 && RMainSub == 0) || (RMainType == 26 && RMainSub == 0)); // Crossbows and Shortbows
-        bool GunCurve      = (RMainType == 26 && RMainSub == 1);                                         // Guns Only
-
-        if (LongBowCurve)
-        {
-            if (distance <= 3.00f) // <=3'
-                return 0.65f + ((1.67f * distance) / 100);
-            if (distance <= 5.00f) // <=5.0'
-                return 0.65f + ((2.60f * distance) / 100);
-            if (distance < 7.50f) // <7.5'
-                return 0.65f + ((4.66f * distance) / 100);
-            if (distance <= 10.50f) // Sweet Spot from 7.5' to 10.5'
-                return 1.00f;
-            if (distance <= 15.00f) // <=15.0'
-                return 1.00f + ((-1.78f * distance) / 100);
-            if (distance <= 20.00f) // <=20.0'
-                return 1.00f + ((-1.15f * distance) / 100);
-
-            return 1.00f + ((-0.90f * distance) / 100); // Default to >20' Curve w/o Cap
-        }
-        else if (CrossBowCurve)
-        {
-            if (distance <= 3.00f) // <=3'
-                return 0.65f + ((3.30f * distance) / 100);
-            if (distance <= 5.00f) // <=5'
-                return 0.65f + ((4.40f * distance) / 100);
-            if (distance < 6.00f) // <6'
-                return 0.65f + ((5.83f * distance) / 100);
-            if (distance <= 10.00f) // Sweet Spot from 6' to 10'
-                return 1.00f;
-            if (distance <= 15.00f) // <=15'
-                return 1.00f + ((-2.00f * distance) / 100);
-            if (distance <= 20.00f) // <=20'
-                return 1.00f + ((-1.10f * distance) / 100);
-
-            return 0.86f; // Default to >20' Curve w/ 86% Cap
-        }
-        else if (GunCurve)
-        {
-            if (distance <= 3.00f) // <=3'
-                return 0.75 + ((3.33f * distance) / 100);
-            if (distance < 4.50f) // <4.5'
-                return 0.75 + ((5.56f * distance) / 100);
-            if (distance <= 5.50f) // Sweet spot from 4.5' to 5.5'
-                return 1.00f;
-            if (distance <= 7.50f) // <=7.5'
-                return 1.00f + ((-2.50f * distance) / 100);
-            if (distance <= 10) // <=10'
-                return 1.00f + ((-2.22f * distance) / 100);
-            if (distance <= 15) // <=15'
-                return 1.00f + ((-1.26f * distance) / 100);
-            if (distance <= 20) // <=20'
-                return 1.00f + ((-0.96f * distance) / 100);
-
-            return 1.00f + ((-0.67f * distance) / 100);
-        }
-        else // Default to Throwing Curve
-        {
-            if (distance <= 1.0f)
-                return 1.00f; // Sweet Spot Under or at 1'
-
-            return 1.00f - ((1.00f * distance) / 100); // Lose 1%/yalm
-        }
+        return result.get_type() == sol::type::number ? result.get<float>() : 1.0f;
     }
 
     float CheckLiementAbsorb(CBattleEntity* PBattleEntity, DAMAGE_TYPE DamageType)

@@ -680,7 +680,14 @@ int32 CBattleEntity::takeDamage(int32 amount, CBattleEntity* attacker /* = nullp
         this->SetLocalVar("weaponskillHit", 0);
     }
 
-    // if attack has master, if it has a master -> if its a PC and the enmity containter holds the mob
+    if (getMod(Mod::ABSORB_DMG_TO_MP) > 0)
+    {
+        int16 absorbedMP = (int16)(amount * getMod(Mod::ABSORB_DMG_TO_MP) / 100);
+        if (absorbedMP > 0)
+        {
+            addMP(absorbedMP);
+        }
+    }
 
     return addHP(-amount);
 }
@@ -2064,21 +2071,22 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
         else if ((xirand::GetRandomNumber(100) < attack.GetHitRate() || attackRound.GetSATAOccured()) &&
                  !PTarget->StatusEffectContainer->HasStatusEffect(EFFECT_ALL_MISS))
         {
-            // attack hit, try to be absorbed by shadow unless it is a SATA attack round
-            if (!(attackRound.GetSATAOccured()) && battleutils::IsAbsorbByShadow(PTarget, this))
-            {
-                actionTarget.messageID = MSGBASIC_SHADOW_ABSORB;
-                actionTarget.param     = 1;
-                actionTarget.reaction  = REACTION::EVADE;
-                attack.SetEvaded(true);
-            }
-            else if (attack.IsParried())
+            // attack hit, try to be deflected by parry unless it is a SATA attack round
+            if (!(attackRound.GetSATAOccured()) && attack.IsParried())
             {
                 actionTarget.messageID  = 70;
                 actionTarget.reaction   = REACTION::PARRY | REACTION::HIT;
                 actionTarget.speceffect = SPECEFFECT::NONE;
                 battleutils::HandleTacticalParry(PTarget);
                 battleutils::HandleIssekiganEnmityBonus(PTarget, this);
+            }
+            // attack hit, try to be absorbed by shadow unless it is a SATA attack round
+            else if (!(attackRound.GetSATAOccured()) && battleutils::IsAbsorbByShadow(PTarget, this))
+            {
+                actionTarget.messageID = MSGBASIC_SHADOW_ABSORB;
+                actionTarget.param     = 1;
+                actionTarget.reaction  = REACTION::EVADE;
+                attack.SetEvaded(true);
             }
             else if (attack.CheckAnticipated() || attack.CheckCounter())
             {
@@ -2115,7 +2123,7 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
                         // Calculate attack bonus for Counterstance Effect Job Points
                         // Needs verification, as there appears to be conflicting information regarding an attack bonus based on DEX
                         // vs a base damage increase.
-                        float csJpAtkBonus = 0;
+                        float csJpAtkBonus = 1;
                         if (PTarget->objtype == TYPE_PC && PTarget->GetMJob() == JOB_MNK && PTarget->StatusEffectContainer->HasStatusEffect(EFFECT_COUNTERSTANCE))
                         {
                             auto*  PChar        = static_cast<CCharEntity*>(PTarget);
