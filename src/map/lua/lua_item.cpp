@@ -275,11 +275,9 @@ bool CLuaItem::isShield()
 
 bool CLuaItem::isRareEx()
 {
-    auto* PItem = dynamic_cast<CItemWeapon*>(m_PLuaItem);
-
-    if (PItem)
+    if (m_PLuaItem)
     {
-        return ((PItem->getFlag() & ITEM_FLAG_EX) && (PItem->getFlag() & ITEM_FLAG_RARE));
+        return (m_PLuaItem->getFlag() & (ITEM_FLAG_RARE | ITEM_FLAG_EX));
     }
 
     return false;
