@@ -273,6 +273,19 @@ bool CLuaItem::isShield()
     return false;
 }
 
+bool CLuaItem::isRareEx()
+{
+    auto* PItem = dynamic_cast<CItemWeapon*>(m_PLuaItem);
+
+    if (PItem)
+    {
+        return ((PItem->getFlag() & ITEM_FLAG_EX) && (PItem->getFlag() & ITEM_FLAG_RARE));
+    }
+
+    return false;
+}
+
+
 auto CLuaItem::getSignature() -> std::string
 {
     char signature[DecodeStringLength] = {};
@@ -359,6 +372,7 @@ void CLuaItem::Register()
     SOL_REGISTER("isTwoHanded", CLuaItem::isTwoHanded);
     SOL_REGISTER("isHandToHand", CLuaItem::isHandToHand);
     SOL_REGISTER("isShield", CLuaItem::isShield);
+    SOL_REGISTER("isRareEx", CLuaItem::isRareEx);
     SOL_REGISTER("getSignature", CLuaItem::getSignature);
     SOL_REGISTER("getAppraisalID", CLuaItem::getAppraisalID);
     SOL_REGISTER("setAppraisalID", CLuaItem::setAppraisalID);

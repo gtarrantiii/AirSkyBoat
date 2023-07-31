@@ -76,6 +76,7 @@ public:
     bool isTwoHanded();  // is a two handed weapon
     bool isHandToHand(); // is a hand to hand weapon (or unarmed H2H)
     bool isShield();     // is a Shield
+    bool isRareEx();     // is rare/ex
 
     auto getSignature() -> std::string;
 

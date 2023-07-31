@@ -37,6 +37,32 @@ zones[xi.zone.LA_THEINE_PLATEAU] =
         ALREADY_HAVE_ALL_FRAGS        = 7607,  -- You have obtained all of the fragments. You must hurry to the ruins of the ancient shrine!
         FOUND_ALL_FRAGS               = 7608,  -- You have obtained <keyitem>! You now have all 8 fragments of light!
         ZILART_MONUMENT               = 7609,  -- It is an ancient Zilart monument.
+        GOBLIN_ARCHAEOLOGIST_1        = 7614,  -- Gimme everything ya got in your bag - standard message clicking on ???
+        GOBLIN_ARCHAEOLOGIST_2        = 7615,  -- Your offering is refused - rare/ex or item(s) with no sale value
+        GOBLIN_ARCHAEOLOGIST_3        = 7616,  -- Leave ya bag and scram - (pop message)
+        GOBLIN_ARCHAEOLOGIST_4        = 7617,  -- You hear a voice from right beneath the surface of the ground.
+        GOBLIN_ARCHAEOLOGIST_5        = 7618,  -- You hear a voice coming from somewhere extremely close to the surface of the ground...
+        GOBLIN_ARCHAEOLOGIST_6        = 7619,  -- You hear a voice coming from somewhere very close to the surface of the ground...
+        GOBLIN_ARCHAEOLOGIST_7        = 7620,  -- You hear a voice coming from somewhere close to the surface of the ground...
+        GOBLIN_ARCHAEOLOGIST_8        = 7621,  -- You hear a voice from under the ground...
+        GOBLIN_ARCHAEOLOGIST_9        = 7622,  -- You hear a voice coming from somewhere deep under the ground...
+        GOBLIN_ARCHAEOLOGIST_10       = 7623,  -- You hear a voice coming from somewhere very deep under the ground...
+        GOBLIN_ARCHAEOLOGIST_11       = 7624,  -- You hear a voice coming from somewhere extremely deep under the ground...
+        GOBLIN_ARCHAEOLOGIST_12       = 7625,  -- Gimme more!!!!!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_13       = 7626,  -- Gimme more!!!!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_14       = 7627,  -- Gimme more!!!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_15       = 7628,  -- Gimme more!!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_16       = 7629,  -- Gimme more!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_17       = 7630,  -- Gimme more!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_18       = 7631,  -- Gimme more!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_19       = 7632,  -- Gimme more!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_20       = 7633,  -- Gimme more!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_21       = 7634,  -- Gimme more!!!!!!
+        GOBLIN_ARCHAEOLOGIST_22       = 7635,  -- Gimme more!!!!!
+        GOBLIN_ARCHAEOLOGIST_23       = 7636,  -- Gimme more!!!!
+        GOBLIN_ARCHAEOLOGIST_24       = 7637,  -- Gimme more!!!
+        GOBLIN_ARCHAEOLOGIST_25       = 7638,  -- Gimme more!!
+        GOBLIN_ARCHAEOLOGIST_26       = 7639,  -- Gimme more!
         ITEMS_ITEMS_LA_LA             = 7754,  -- You can hear a strange voice... Items, items, la la la la la
         GOBLIN_SLIPPED_AWAY           = 7760,  -- The Goblin slipped away when you were not looking...
         TELEPOINT_HAS_BEEN_SHATTERED  = 7770,  -- The telepoint has been shattered into a thousand pieces...
@@ -86,7 +112,7 @@ zones[xi.zone.LA_THEINE_PLATEAU] =
         },
 
         NIHNIKNOOVI = 17195475,
-
+        GOBLINARCHAEOLOGIST = 17195474,
         VOIDWALKER =
         {
             [xi.keyItem.CLEAR_ABYSSITE] =
@@ -123,6 +149,7 @@ zones[xi.zone.LA_THEINE_PLATEAU] =
     {
         FALLEN_EGG  = 17195583,
         RAINBOW     = 17195607,
+        GOBLIN_ARCHAEOLOGIST_QM = 17195582,
     },
 }
 

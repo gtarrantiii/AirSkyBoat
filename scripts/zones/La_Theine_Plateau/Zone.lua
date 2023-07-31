@@ -22,6 +22,7 @@ end
 
 zoneObject.onInitialize = function(zone)
     laTheineGlobal.moveFallenEgg()
+    laTheineGlobal.moveGoblinArchaeologistQM()
     xi.chocobo.initZone(zone)
     xi.voidwalker.zoneOnInit(zone)
 end
