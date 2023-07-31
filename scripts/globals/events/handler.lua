@@ -71,12 +71,11 @@ end
 xi.events.registeredEvents =
 {
     require("scripts/globals/events/starlight_celebration"),
-    require("scripts/globals/events/egg_hunt_egg-stravaganza")
+    require("scripts/globals/events/egg_hunt_egg-stravaganza"),
+    require("scripts/globals/events/sunbreeze_festival"),
 }
 
 xi.events.handler.checkSeasonalEvents = function()
-    print("Checking Seasonal Events")
-
     for _, event in pairs(xi.events.registeredEvents) do
         event:checkEnding()
     end

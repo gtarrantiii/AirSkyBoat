@@ -56,6 +56,8 @@ struct map_session_data_t
     blowfish_t   blowfish           = {};      // unique decypher keys
     CCharEntity* PChar              = nullptr; // game char
     uint8        shuttingDown       = 0;       // prevents double session closing
+    bool         zoning             = false;
+    time_t       last_zone_packet   = 0;
 };
 
 extern uint32 map_amntplayers;
@@ -66,6 +68,9 @@ static constexpr float server_tick_rate = 2.5f;
 
 // Update every 400ms
 static constexpr float server_tick_interval = 1000.0f / server_tick_rate;
+
+// Check Trigger Areas every 200ms
+static constexpr float server_trigger_area_interval = server_tick_interval / 2.0f;
 
 typedef std::map<uint64, map_session_data_t*> map_session_list_t;
 extern map_session_list_t                     map_session_list;

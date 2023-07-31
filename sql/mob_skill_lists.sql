@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `mob_skill_lists` (
   `skill_list_id` smallint(5) unsigned NOT NULL,
   `mob_skill_id` smallint(3) unsigned NOT NULL,
   PRIMARY KEY (`skill_list_id`,`mob_skill_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 
 --
 -- Contenu de la table `mob_skill_lists`
@@ -437,8 +437,8 @@ INSERT INTO `mob_skill_lists` VALUES ('Funguar',116,312);
 INSERT INTO `mob_skill_lists` VALUES ('Funguar',116,314);
 INSERT INTO `mob_skill_lists` VALUES ('Funguar',116,315);
 -- 117: Gruesome Gargouille
-INSERT INTO `mob_skill_lists` VALUES ('Gargoyle',118,2421);
-INSERT INTO `mob_skill_lists` VALUES ('Gargoyle',118,2422);
+INSERT INTO `mob_skill_lists` VALUES ('Gargoyle',117,2421);
+INSERT INTO `mob_skill_lists` VALUES ('Gargoyle',117,2422);
 INSERT INTO `mob_skill_lists` VALUES ('Gargoyle',118,2423);
 INSERT INTO `mob_skill_lists` VALUES ('Gargoyle',118,2424);
 INSERT INTO `mob_skill_lists` VALUES ('Gargoyle',118,2425);
@@ -514,6 +514,7 @@ INSERT INTO `mob_skill_lists` VALUES ('Gnole',132,2175);
 INSERT INTO `mob_skill_lists` VALUES ('Gnole',132,2176);
 INSERT INTO `mob_skill_lists` VALUES ('Goblin',133,590);
 INSERT INTO `mob_skill_lists` VALUES ('Goblin',133,591);
+INSERT INTO `mob_skill_lists` VALUES ('Goblin',133,592);
 INSERT INTO `mob_skill_lists` VALUES ('God',134,1491);
 INSERT INTO `mob_skill_lists` VALUES ('God',134,1492);
 INSERT INTO `mob_skill_lists` VALUES ('God',134,1493);
@@ -3826,6 +3827,7 @@ INSERT INTO `mob_skill_lists` VALUES ('Barbastelle',1198,392); -- Ultrasonics
 
 INSERT INTO `mob_skill_lists` VALUES ('Omega_Critical',1187,1235); -- pile pitch
 INSERT INTO `mob_skill_lists` VALUES ('Omega_Critical',1187,1239); -- discharger
+INSERT INTO `mob_skill_lists` VALUES ('Omega_Critical',1187,1237); -- hyper_pulse
 INSERT INTO `mob_skill_lists` VALUES ('Proto-Omega_Standing',1188,1525); -- guided_missile_ii
 INSERT INTO `mob_skill_lists` VALUES ('Proto-Omega_Standing',1188,1528); -- floodlight
 INSERT INTO `mob_skill_lists` VALUES ('Proto-Omega_Standing',1188,1529); -- hyper_pulse
@@ -3856,7 +3858,12 @@ INSERT INTO `mob_skill_lists` VALUES ('Proto-Ultima_Phase5',1196,1521); -- armor
 INSERT INTO `mob_skill_lists` VALUES ('Proto-Ultima_Phase5',1196,1522); -- energy_screen
 INSERT INTO `mob_skill_lists` VALUES ('Proto-Ultima_Phase5',1196,1523); -- mana_screen
 
--- Next available ID: 1190
+INSERT INTO `mob_skill_lists` VALUES ('TRUST_August_Melee',1197,3648); -- august_melee_sword
+INSERT INTO `mob_skill_lists` VALUES ('TRUST_August_Melee',1197,3649); -- august_melee_axe
+INSERT INTO `mob_skill_lists` VALUES ('TRUST_August_Melee',1197,3650); -- august_melee_h2h
+INSERT INTO `mob_skill_lists` VALUES ('TRUST_August_Melee',1197,3651); -- august_melee_bow
+
+-- Next available ID: 1198
 
 -- ------------------------------------------------------------
 -- Start of AirSkyBoat Section

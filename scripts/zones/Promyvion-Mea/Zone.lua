@@ -3,6 +3,7 @@
 -----------------------------------
 local ID = require('scripts/zones/Promyvion-Mea/IDs')
 require('scripts/globals/promyvion')
+require("scripts/globals/teleports")
 require('scripts/globals/settings')
 require('scripts/globals/status')
 -----------------------------------
@@ -11,6 +12,7 @@ local zoneObject = {}
 zoneObject.onInitialize = function(zone)
 --    UpdateNMSpawnPoint(ID.mob.COVETAR)
 --    GetMobByID(ID.mob.COVETAR):setRespawnTime(math.random(3600, 21600))
+
     xi.promyvion.initZone(zone)
 end
 
@@ -40,9 +42,7 @@ end
 
 zoneObject.onEventUpdate = function(player, csid, region)
     if csid >= 30 and csid <= 45 then
-        for _, entry in pairs(player:getNotorietyList()) do
-            entry:clearEnmity(player) -- reset hate on player after teleporting
-        end
+        xi.teleport.clearEnmityList(player)
     end
 end
 

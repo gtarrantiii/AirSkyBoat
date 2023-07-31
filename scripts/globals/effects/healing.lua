@@ -4,9 +4,7 @@
 -----------------------------------
 require("scripts/globals/abyssea")
 require("scripts/globals/keyitems")
-require("scripts/globals/settings")
 require("scripts/globals/quests")
-require("scripts/globals/status")
 require("scripts/globals/zone")
 require("scripts/globals/roe")
 require("scripts/globals/voidwalker")
@@ -61,6 +59,26 @@ end
 effectObject.onEffectTick = function(target, effect)
     local healtime = effect:getTickCount()
 
+    if target:getObjType() == xi.objType.FELLOW then
+        local master        = target:getMaster()
+        local ID            = require("scripts/zones/"..master:getZoneName().."/IDs")
+        local optionsMask   = master:getFellowValue("optionsMask")
+        local personality   = target:getLocalVar("personality")
+        local mpNotice      = target:getLocalVar("mpNotice")
+        local mpp           = target:getMP() / target:getMaxMP() * 100
+        local mpSignals     = false
+        if bit.band(optionsMask, bit.lshift(1, 2)) == 4 then
+            mpSignals = true
+        end
+
+        if mpp >= 67 and mpNotice == 1 and mpSignals then
+            master:showText(target, ID.text.FELLOW_MESSAGE_OFFSET + 45 + personality)
+            target:setLocalVar("mpNotice", 0)
+        elseif mpp < 67 and mpNotice ~= 1 then
+            target:setLocalVar("mpNotice", 1)
+        end
+    end
+
     if healtime > 2 then
         -- curse II also known as "zombie"
         if
@@ -92,9 +110,14 @@ effectObject.onEffectTick = function(target, effect)
             end
 
             target:addHP(healHP)
-            if target:getHPP() < 100 then
+
+            if
+                target:getHPP() < 100  and
+                target:getMaster() == nil
+            then
                 target:updateEnmityFromCure(target, healHP)
             end
+
             target:addHPLeaveSleeping(healHP)
             target:addMP(12 + ((healtime - 2) * (1 + target:getMod(xi.mod.CLEAR_MIND))) + target:getMod(xi.mod.MPHEAL))
         end

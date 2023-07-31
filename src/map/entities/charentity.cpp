@@ -66,6 +66,7 @@
 #include "charentity.h"
 #include "conquest_system.h"
 #include "enmity_container.h"
+#include "fellowentity.h"
 #include "item_container.h"
 #include "items/item_furnishing.h"
 #include "items/item_usable.h"
@@ -155,6 +156,8 @@ CCharEntity::CCharEntity()
     memset(&m_missionLog, 0, sizeof(m_missionLog));
     m_eminenceCache.activemap.reset();
 
+    memset(&m_claimedDeeds, 0, sizeof(m_claimedDeeds));
+
     for (uint8 i = 0; i <= 3; ++i)
     {
         m_missionLog[i].current = 0xFFFF;
@@ -218,8 +221,17 @@ CCharEntity::CCharEntity()
     PRecastContainer       = std::make_unique<CCharRecastContainer>(this);
     PLatentEffectContainer = new CLatentEffectContainer(this);
 
+    retriggerLatentsAfterPacketParsing = false;
+
     resetPetZoningInfo();
     petZoningInfo.petID = 0;
+
+    fellowZoningInfo.respawnFellow = false;
+    fellowZoningInfo.fellowID      = 0;
+    fellowZoningInfo.fellowHP      = 0;
+    fellowZoningInfo.fellowMP      = 0;
+
+    m_PFellow = nullptr;
 
     m_PlayTime    = 0;
     m_SaveTime    = 0;
@@ -497,6 +509,18 @@ bool CCharEntity::shouldPetPersistThroughZoning()
            (petType == PET_TYPE::JUG_PET && settings::get<bool>("map.KEEP_JUGPET_THROUGH_ZONING"));
 }
 
+void CCharEntity::setFellowZoningInfo()
+{
+    fellowZoningInfo.fellowHP = m_PFellow->health.hp;
+    fellowZoningInfo.fellowMP = m_PFellow->health.mp;
+}
+
+void CCharEntity::resetFellowZoningInfo()
+{
+    fellowZoningInfo.fellowHP      = 0;
+    fellowZoningInfo.fellowMP      = 0;
+    fellowZoningInfo.respawnFellow = false;
+}
 /************************************************************************
  *
  * Return the container with the specified ID.If the ID goes beyond, then *
@@ -722,6 +746,16 @@ void CCharEntity::ClearTrusts()
     PTrusts.clear();
 
     ReloadPartyInc();
+}
+
+void CCharEntity::RemoveFellow()
+{
+    if (m_PFellow == nullptr || !m_PFellow->PAI->IsSpawned())
+        return;
+
+    m_PFellow->PAI->Despawn();
+    m_PFellow = nullptr;
+    pushPacket(new CCharUpdatePacket(this));
 }
 
 void CCharEntity::RequestPersist(CHAR_PERSIST toPersist)
@@ -1044,7 +1078,8 @@ void CCharEntity::OnCastFinished(CMagicState& state, action_t& action)
         for (auto&& actionTarget : actionList.actionTargets)
         {
             if (actionTarget.param > 0 && PSpell->dealsDamage() && PSpell->getSpellGroup() == SPELLGROUP_BLUE &&
-                StatusEffectContainer->HasStatusEffect(EFFECT_CHAIN_AFFINITY) && static_cast<CBlueSpell*>(PSpell)->getPrimarySkillchain() != 0)
+                (StatusEffectContainer->HasStatusEffect(EFFECT_CHAIN_AFFINITY) || StatusEffectContainer->HasStatusEffect(EFFECT_AZURE_LORE)) &&
+                static_cast<CBlueSpell*>(PSpell)->getPrimarySkillchain() != 0)
             {
                 auto*     PBlueSpell = static_cast<CBlueSpell*>(PSpell);
                 SUBEFFECT effect     = battleutils::GetSkillChainEffect(PTarget, PBlueSpell->getPrimarySkillchain(), PBlueSpell->getSecondarySkillchain(), 0);
@@ -1198,7 +1233,7 @@ void CCharEntity::OnWeaponSkillFinished(CWeaponSkillState& state, action_t& acti
                 actionTarget.messageID = primary ? 224 : 276; // restores mp msg
                 actionTarget.reaction  = REACTION::HIT;
                 damage                 = std::max(damage, 0);
-                actionTarget.param     = addMP(damage);
+                actionTarget.param     = PTarget->addMP(damage);
             }
 
             if (primary)
@@ -1494,27 +1529,6 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
                 auto PPetTarget = PTarget->targid;
                 if (PAbility->getID() >= ABILITY_HEALING_RUBY && PAbility->getID() <= ABILITY_PERFECT_DEFENSE)
                 {
-                    // Blood Pact mp cost stored in animation ID
-                    float mpCost = PAbility->getAnimationID();
-
-                    if (StatusEffectContainer->HasStatusEffect(EFFECT_APOGEE))
-                    {
-                        mpCost *= 1.5f;
-                        StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_BLOODPACT);
-                    }
-
-                    // Blood Boon (does not affect Astral Flow BPs)
-                    if ((PAbility->getAddType() & ADDTYPE_ASTRAL_FLOW) == 0)
-                    {
-                        int16 bloodBoonRate = getMod(Mod::BLOOD_BOON);
-                        if (xirand::GetRandomNumber(100) < bloodBoonRate)
-                        {
-                            mpCost *= xirand::GetRandomNumber(8.f, 16.f) / 16.f;
-                        }
-                    }
-
-                    addMP((int32)-mpCost);
-
                     if (PAbility->getValidTarget() == TARGET_SELF)
                     {
                         PPetTarget = PPet->targid;
@@ -1653,7 +1667,7 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
         }
 
         uint16 recastID = PAbility->getRecastId();
-        if (settings::get<bool>("map.BLOOD_PACT_SHARED_TIMER") && (recastID == 173 || recastID == 174))
+        if (lua["xi"]["settings"]["map"]["BLOOD_PACT_SHARED_TIMER"].get<bool>() && (recastID == 173 || recastID == 174))
         {
             PRecastContainer->Add(RECAST_ABILITY, (recastID == 173 ? 174 : 173), action.recast);
         }
@@ -2119,6 +2133,12 @@ void CCharEntity::OnRaise()
 
             uint16 xpNeededToLevel = charutils::GetExpNEXTLevel(jobs.job[GetMJob()]) - jobs.exp[GetMJob()];
 
+            // Player died within a battlefield, reward the battlefield level equivalent EXP
+            if (StatusEffectContainer->HasStatusEffect(EFFECT_BATTLEFIELD))
+            {
+                expLost = m_LevelRestriction >= 1 && m_LevelRestriction <= 67 ? (charutils::GetExpNEXTLevel(m_LevelRestriction) * 8) / 100 : 2400;
+            }
+
             // Exp is enough to level you and (you're not under a level restriction, or the level restriction is higher than your current main level).
             if (xpNeededToLevel < expLost && (m_LevelRestriction == 0 || GetMLevel() < m_LevelRestriction))
             {
@@ -2348,6 +2368,10 @@ void CCharEntity::Die()
     {
         this->m_raiseLevel = 0;
     }
+
+    // fix to despawn pet if player dies.
+    if (this->PPet != nullptr)
+        petutils::DespawnPet(this);
 
     luautils::OnPlayerDeath(this);
 }
@@ -2584,28 +2608,28 @@ void CCharEntity::changeMoghancement(uint16 moghancementID, bool isAdding)
     switch (moghancementID)
     {
         case MOGHANCEMENT_FIRE:
-            addModifier(Mod::SYNTH_FAIL_RATE_FIRE, 5 * multiplier);
+            addModifier(Mod::SYNTH_FAIL_RATE_FIRE, 1 * multiplier);
             break;
         case MOGHANCEMENT_ICE:
-            addModifier(Mod::SYNTH_FAIL_RATE_ICE, 5 * multiplier);
+            addModifier(Mod::SYNTH_FAIL_RATE_ICE, 1 * multiplier);
             break;
         case MOGHANCEMENT_WIND:
-            addModifier(Mod::SYNTH_FAIL_RATE_WIND, 5 * multiplier);
+            addModifier(Mod::SYNTH_FAIL_RATE_WIND, 1 * multiplier);
             break;
         case MOGHANCEMENT_EARTH:
-            addModifier(Mod::SYNTH_FAIL_RATE_EARTH, 5 * multiplier);
+            addModifier(Mod::SYNTH_FAIL_RATE_EARTH, 1 * multiplier);
             break;
         case MOGHANCEMENT_LIGHTNING:
-            addModifier(Mod::SYNTH_FAIL_RATE_LIGHTNING, 5 * multiplier);
+            addModifier(Mod::SYNTH_FAIL_RATE_LIGHTNING, 1 * multiplier);
             break;
         case MOGHANCEMENT_WATER:
-            addModifier(Mod::SYNTH_FAIL_RATE_WATER, 5 * multiplier);
+            addModifier(Mod::SYNTH_FAIL_RATE_WATER, 1 * multiplier);
             break;
         case MOGHANCEMENT_LIGHT:
-            addModifier(Mod::SYNTH_FAIL_RATE_LIGHT, 5 * multiplier);
+            addModifier(Mod::SYNTH_FAIL_RATE_LIGHT, 1 * multiplier);
             break;
         case MOGHANCEMENT_DARK:
-            addModifier(Mod::SYNTH_FAIL_RATE_DARK, 5 * multiplier);
+            addModifier(Mod::SYNTH_FAIL_RATE_DARK, 1 * multiplier);
             break;
 
         case MOGHANCEMENT_FISHING:
@@ -2708,7 +2732,7 @@ void CCharEntity::changeMoghancement(uint16 moghancementID, bool isAdding)
             addModifier(Mod::GARDENING_WILT_BONUS, 36 * multiplier);
             break;
         case MOGHANCEMENT_DESYNTHESIS:
-            addModifier(Mod::DESYNTH_SUCCESS, 2 * multiplier);
+            addModifier(Mod::DESYNTH_SUCCESS, 1 * multiplier);
             break;
         case MOGHANCEMENT_CONQUEST:
             addModifier(Mod::CONQUEST_BONUS, 6 * multiplier);

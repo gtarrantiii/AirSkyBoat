@@ -48,11 +48,11 @@ function onTrigger(player, zoneName, mobIndex)
     end
 
     mobIndex = tonumber(mobIndex)
-    if not wave then
+    if not mobIndex then
         error(player, string.format("[DynaSetWave] Invalid monster index provided."))
         return
     end
 
     xi.dynamis.nmDynamicSpawn(mobIndex, nil, true, zone:getID())
-    player:PrintToPlayer(string.format("[DynaSetWave] Spawned Notorious Monster %n", mobIndex))
+    player:PrintToPlayer(string.format("[DynaSetWave] Spawned Notorious Monster %s", mobIndex))
 end

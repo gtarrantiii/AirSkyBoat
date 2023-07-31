@@ -1,8 +1,6 @@
 -----------------------------------
 -- Burning Strike
 -----------------------------------
-require("scripts/globals/settings")
-require("scripts/globals/status")
 require("scripts/globals/summon")
 require("scripts/globals/magic")
 require("scripts/globals/mobskills")
@@ -24,6 +22,7 @@ abilityObject.onPetAbility = function(target, pet, skill)
     params.melee = true
 
     local paramsEle = {}
+    paramsEle.hybrid = true
     paramsEle.ftp000 = 2.75 paramsEle.ftp150 = 2.75 paramsEle.ftp300 = 2.75
     paramsEle.str_wsc = 0.2 paramsEle.dex_wsc = 0.0 paramsEle.vit_wsc = 0.0 paramsEle.agi_wsc = 0.0 paramsEle.int_wsc = 0.2 paramsEle.mnd_wsc = 0.0 paramsEle.chr_wsc = 0.0
     paramsEle.element = xi.magic.ele.FIRE

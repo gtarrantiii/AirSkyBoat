@@ -2,6 +2,7 @@
 -- Zone: RuAun_Gardens (130)
 -----------------------------------
 local ID = require('scripts/zones/RuAun_Gardens/IDs')
+require("scripts/globals/teleports")
 require('scripts/globals/missions')
 require('scripts/globals/conquest')
 require('scripts/globals/treasure')
@@ -19,8 +20,8 @@ zoneObject.onInitialize = function(zone)
     xi.conq.setRegionalConquestOverseers(zone:getRegionID())
 end
 
-zoneObject.onConquestUpdate = function(zone, updatetype)
-    xi.conq.onConquestUpdate(zone, updatetype)
+zoneObject.onConquestUpdate = function(zone, updatetype, influence, owner, ranking, isConquestAlliance)
+    xi.conq.onConquestUpdate(zone, updatetype, influence, owner, ranking, isConquestAlliance)
 end
 
 zoneObject.onZoneIn = function(player, prevZone)
@@ -31,7 +32,7 @@ zoneObject.onZoneIn = function(player, prevZone)
         player:getYPos() == 0 and
         player:getZPos() == 0
     then
-        player:setPos(333.017, -44.896, -458.35, 164)
+        player:setPos(-1, -55, -637, 193)
     end
 
     return cs
@@ -89,9 +90,7 @@ end
 
 zoneObject.onEventUpdate = function(player, csid, option)
     if csid >= 1 and csid <= 40 then
-        for _, entry in pairs(player:getNotorietyList()) do
-            entry:clearEnmity(player) -- reset hate on player after teleporting
-        end
+        xi.teleport.clearEnmityList(player)
     end
 end
 

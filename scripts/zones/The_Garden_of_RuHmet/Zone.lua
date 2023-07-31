@@ -2,6 +2,7 @@
 -- Zone: The_Garden_of_RuHmet (35)
 -----------------------------------
 local ID = require('scripts/zones/The_Garden_of_RuHmet/IDs')
+require("scripts/globals/teleports")
 require('scripts/globals/conquest')
 require('scripts/globals/settings')
 require('scripts/globals/status')
@@ -60,6 +61,7 @@ zoneObject.onInitialize = function(zone)
     qmDrk:setLocalVar("position", qmDrkPos)
     qmDrk:setPos(unpack(ID.npc.QM_IXAERN_DRK_POS[qmDrkPos]))
     qmDrk:setLocalVar("hatedPlayer", 0)
+    qmDrk:setLocalVar("nextMove", os.time() + 1800) -- 30 minutes from now
 
     -- Give the Faith ??? a random spawn
     local qmFaith = GetNPCByID(ID.npc.QM_JAILER_OF_FAITH)
@@ -98,16 +100,20 @@ zoneObject.onGameHour = function(zone)
     end
 
     -- Ix'DRK spawn randomiser
-    if vanadielHour % 12 == 0 and qmDrk:getStatus() ~= xi.status.DISAPPEAR then -- Change ??? position every 12 hours Vana'diel time (30 mins)
+    if
+        qmDrk:getStatus() ~= xi.status.DISAPPEAR and
+        qmDrk:getLocalVar("nextMove") < os.time()
+    then -- Change ??? position every 30 mins
         qmDrk:hideNPC(30)
         local qmDrkPos = math.random(1, 4)
         qmDrk:setLocalVar("position", qmDrkPos)
+        qmDrk:setLocalVar("nextMove", os.time() + 1800) -- 30 minutes later
         qmDrk:setPos(unpack(ID.npc.QM_IXAERN_DRK_POS[qmDrkPos]))
     end
 end
 
-zoneObject.onConquestUpdate = function(zone, updatetype)
-    xi.conq.onConquestUpdate(zone, updatetype)
+zoneObject.onConquestUpdate = function(zone, updatetype, influence, owner, ranking, isConquestAlliance)
+    xi.conq.onConquestUpdate(zone, updatetype, influence, owner, ranking, isConquestAlliance)
 end
 
 zoneObject.onZoneIn = function(player, prevZone)
@@ -205,14 +211,12 @@ zoneObject.onEventFinish = function(player, csid, option)
     if csid == 101 and option == 1 then
         player:setPos(540, -1, -499.900, 62, 36)
         player:setCharVar("Ru-Hmet-TP", 0)
-        for _, entry in pairs(player:getNotorietyList()) do
-            entry:clearEnmity(player) -- reset hate on player after teleporting
-        end
+        xi.teleport.clearEnmityList(player)
+
     elseif (csid > 149 and csid < 184) or csid == 102 or csid == 103 or csid == 101 then
         player:setCharVar("Ru-Hmet-TP", 0)
-        for _, entry in pairs(player:getNotorietyList()) do
-            entry:clearEnmity(player) -- reset hate on player after teleporting
-        end
+        xi.teleport.clearEnmityList(player)
+
     elseif csid == 32000 and option == 1 then
         player:setPos(420, 0, 398, 68)
     end

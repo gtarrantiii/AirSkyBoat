@@ -53,6 +53,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include "../ai/states/ability_state.h"
 
 #include "../mob_modifier.h"
+#include "../notoriety_container.h"
 #include "../packets/char_abilities.h"
 #include "../packets/char_sync.h"
 #include "../packets/char_update.h"
@@ -1155,11 +1156,12 @@ namespace petutils
         static_cast<CItemWeapon*>(PPet->m_Weapons[SLOT_MAIN])->setDelay((uint16)(floor(1000.0f * (320.0f / 60.0f)))); // 320 delay
         static_cast<CItemWeapon*>(PPet->m_Weapons[SLOT_MAIN])->setBaseDelay((uint16)(floor(1000.0f * (320.0f / 60.0f))));
         static_cast<CItemWeapon*>(PPet->m_Weapons[SLOT_MAIN])->setDamage((uint16)(floor(mLvl / 2) + 3));
-        // Set stat modifiers
-        PPet->setModifier(Mod::DEF, mobutils::GetDefense(PPet, PPet->defRank));
-        PPet->setModifier(Mod::EVA, mobutils::GetBase(PPet, PPet->evaRank));
-        PPet->setModifier(Mod::ATT, mobutils::GetBase(PPet, PPet->attRank));
-        PPet->setModifier(Mod::ACC, mobutils::GetBase(PPet, PPet->accRank));
+        // Set A+ weapon skill
+        PPet->setModifier(Mod::ATT, battleutils::GetMaxSkill(SKILL_GREAT_AXE, JOB_WAR, mLvl > 99 ? 99 : mLvl));
+        PPet->setModifier(Mod::ACC, battleutils::GetMaxSkill(SKILL_GREAT_AXE, JOB_WAR, mLvl > 99 ? 99 : mLvl));
+        // Set D evasion and def
+        PPet->setModifier(Mod::EVA, battleutils::GetMaxSkill(SKILL_HAND_TO_HAND, JOB_WAR, mLvl > 99 ? 99 : mLvl));
+        PPet->setModifier(Mod::DEF, battleutils::GetMaxSkill(SKILL_HAND_TO_HAND, JOB_WAR, mLvl > 99 ? 99 : mLvl));
 
         // Set wyvern damageType to slashing damage. "Wyverns do slashing damage..." https://www.bg-wiki.com/ffxi/Wyvern_(Dragoon_Pet)
         PPet->m_dmgType = DAMAGE_TYPE::SLASHING;
@@ -1278,7 +1280,7 @@ namespace petutils
         FinalizePetStatistics(PMaster, PPet);
     }
 
-    void CalculateLoupanStats(CBattleEntity* PMaster, CPetEntity* PPet)
+    void CalculateLuopanStats(CBattleEntity* PMaster, CPetEntity* PPet)
     {
         PPet->SetMLevel(PMaster->GetMLevel());
         PPet->health.maxhp = (uint32)floor((250 * PPet->GetMLevel()) / 15);
@@ -1555,6 +1557,25 @@ namespace petutils
             PMob->PMaster    = nullptr;
 
             PMob->PAI->SetController(std::make_unique<CMobController>(PMob));
+
+            // clear all enmity towards a charmed mob when it is released
+            // use two loops to avoid modifying the container while iterating over it
+            auto&                  notorietyContainer = PMob->PNotorietyContainer;
+            std::list<CMobEntity*> mobsToPacify;
+
+            // first collect the mobs with hate towards the formerly charmed mob
+            for (auto* entityWithEnmity : *notorietyContainer)
+            {
+                if (entityWithEnmity->objtype == TYPE_MOB)
+                {
+                    mobsToPacify.push_back(static_cast<CMobEntity*>(entityWithEnmity));
+                }
+            }
+            // then remove the formerly charmed mob from those mobs enmity containers
+            for (auto* mobToPacify : mobsToPacify)
+            {
+                mobToPacify->PEnmityContainer->Clear(PMob->id);
+            }
         }
         else if (PPet->objtype == TYPE_PET)
         {
@@ -1973,11 +1994,18 @@ namespace petutils
             PPet = new CPetEntity(petType);
             PPet->saveModifiers();
 
-            if (petType == PET_TYPE::AVATAR || PetID <= PETID_DARKSPIRIT)
+            // If pet is a spirit then set the spirit controller
+            if (PetID <= PETID_DARKSPIRIT)
             {
                 PPet->PMaster = PMaster;
                 PPet->m_PetID = PetID;
                 PPet->PAI->SetController(std::make_unique<CSpiritController>(PPet));
+            }
+            // If pet is an avatar then only set PMaster and PetID
+            else if ((PetID >= PETID_CARBUNCLE && PetID <= PETID_CAIT_SITH) || PetID == PETID_SIREN)
+            {
+                PPet->PMaster = PMaster;
+                PPet->m_PetID = PetID;
             }
         }
 
@@ -2051,7 +2079,7 @@ namespace petutils
         }
         else if (PPet->getPetType() == PET_TYPE::LUOPAN && PMaster->objtype == TYPE_PC)
         {
-            CalculateLoupanStats(PMaster, PPet);
+            CalculateLuopanStats(PMaster, PPet);
         }
 
         PPet->setSpawnLevel(PPet->GetMLevel());
