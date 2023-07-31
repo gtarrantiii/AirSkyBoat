@@ -94,15 +94,17 @@ entity.onTrade = function(player, npc, trade)
 
     for i = 0, trade:getSlotCount()-1 do
         local item=trade:getItem(i)
+        local itemId = trade:getItemId(i)
+        local itemQty = trade:getItemQty(itemId)
 
         --nothing too unique
-        if (!item:isRareEx()) then
+        if (item:isRareEx()) then
             validContainer = false
             break
         end
 
         --no pay to win.. lol
-        if(item:getId() == 65535) then
+        if(itemId == 65535) then
             validContainer = false
             break
         end
@@ -114,18 +116,20 @@ entity.onTrade = function(player, npc, trade)
         end
 
         --all good add to the value
-        tradeValue = tradeValue + item:getBasePrice()
+        tradeValue = tradeValue + (item:getBasePrice() * itemQty)
     end
 
     if (validContainer) then
         --how many steps does the traded value cover?
         currentDepth = currentDepth - math.floor(tradeValue/stepValue)
-        player:confirmTrade()
     else
         --refused
         player:messageSpecial(ID.text.GOBLIN_ARCHAEOLOGIST_2)
         return
     end
+
+    --take item(s) and apply
+    player:confirmTrade()
 
     if currentDepth > 0 then
         local d = depths[currentDepth]
@@ -140,6 +144,7 @@ entity.onTrade = function(player, npc, trade)
         npcUtil.popFromQM(player, npc, ID.mob.GOBLINARCHAEOLOGIST, { radius = 1, hide = popdelay })
         npc:setLocalVar('LPGADEPTH',0)
     end
+
 
 end
 
