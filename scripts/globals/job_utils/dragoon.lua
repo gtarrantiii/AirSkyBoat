@@ -5,9 +5,7 @@ require("scripts/globals/ability")
 require("scripts/globals/items")
 require("scripts/globals/jobpoints")
 require("scripts/globals/msg")
-require("scripts/globals/settings")
 require("scripts/globals/spells/damage_spell")
-require("scripts/globals/status")
 require("scripts/globals/weaponskills")
 -----------------------------------
 xi = xi or {}
@@ -216,6 +214,7 @@ end
 xi.job_utils.dragoon.useSpiritSurge = function(player, target, ability)
     local wyvern = player:getPet()
     local petTP = wyvern:getTP()
+    local petHP = wyvern:getHP()
     local duration = 60
 
     -- Spirit Surge increases dragoon's MAX HP increases by 25% of wyvern MaxHP
@@ -237,6 +236,7 @@ xi.job_utils.dragoon.useSpiritSurge = function(player, target, ability)
     target:resetRecast(xi.recast.ABILITY, 160) -- Super Jump
 
     target:addStatusEffect(xi.effect.SPIRIT_SURGE, maxHPBoost, 0, duration, 0, strBoost)
+    target:addHP(petHP) -- Add in wyvern's remaining HP before the wyvern was despawned
 end
 
 xi.job_utils.dragoon.useCallWyvern = function(player, target, ability)
@@ -601,7 +601,7 @@ xi.job_utils.dragoon.useSteadyWing = function(player, target, ability, action)
 
     -- https://www.bg-wiki.com/ffxi/Steady_Wing
     if wyvern then
-        local power = 1.3 * wyvern:getMaxHP() + wyvern:getHP()
+        local power = wyvern:getMaxHP() * 0.3 + wyvern:getMaxHP() - wyvern:getHP()
 
         action:reaction(wyvern:getID(), 0x10) -- Observed on retail
         if wyvern:addStatusEffect(xi.effect.STONESKIN, power, 0, 300) then
@@ -708,7 +708,7 @@ xi.job_utils.dragoon.useDamageBreath = function(wyvern, target, skill, action, d
     local element = damageType - xi.damageType.ELEMENTAL
 
     -- "Breath accuracy is directly affected by a wyvern's current HP", but no data exists.
-    local resist              = xi.spells.damage.calculateResist(wyvern, target,  nil, 0, element, 0, bonusMacc)
+    local resist              = xi.spells.damage.calculateResist(wyvern, target,  nil, 0, element, 0, bonusMacc, element)
     local sdt                 = xi.spells.damage.calculateSDT(wyvern, target, nil, element)
     local magicBurst          = xi.spells.damage.calculateIfMagicBurst(wyvern, target,  0, element)
     local nukeAbsorbOrNullify = xi.spells.damage.calculateNukeAbsorbOrNullify(wyvern, target, nil, element)

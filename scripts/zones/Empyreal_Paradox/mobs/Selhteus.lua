@@ -16,6 +16,9 @@ entity.onMobInitialize = function(mob)
     mob:setAutoAttackEnabled(false)
 end
 
+entity.onMobSpawn = function(mob)
+end
+
 entity.onMobFight = function(mob, target)
     if target:getTarget() and target:getTarget():getID() ~= mob:getID() then
         local targetPos = target:getPos()

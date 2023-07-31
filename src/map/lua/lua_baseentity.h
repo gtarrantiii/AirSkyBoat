@@ -58,11 +58,10 @@ public:
     void messageName(uint16 messageID, sol::object const& entity, sol::object const& p0, sol::object const& p1,
                      sol::object const& p2, sol::object const& p3, sol::object const& chat);                               // Sends a Message with a Name
     void messagePublic(uint16 messageID, CLuaBaseEntity const* PEntity, sol::object const& arg2, sol::object const& arg3); // Sends a public Basic Message
-
-    void messageSpecial(uint16 messageID, sol::variadic_args va); // Sends Special Message
-
-    void messageSystem(uint16 messageID, sol::object const& p0, sol::object const& p1); // Sends System Message
-    void messageCombat(sol::object const& speaker, int32 p0, int32 p1, int16 message);  // Sends Combat Message
+    void messageSpecial(uint16 messageID, sol::variadic_args va);                                                          // Sends Special Message
+    void messageSystem(uint16 messageID, sol::object const& p0, sol::object const& p1);                                    // Sends System Message
+    void messageCombat(sol::object const& speaker, int32 p0, int32 p1, int16 message);                                     // Sends Combat Message
+    void messageStandard(uint16 messageID);                                                                                // Send Standard Message
 
     void customMenu(sol::object const& obj);
 
@@ -71,6 +70,7 @@ public:
     void   setCharVar(std::string const& varname, int32 value);       // Sets a character variable
     void   incrementCharVar(std::string const& varname, int32 value); // Increments/decriments/sets a character variable
     void   setVolatileCharVar(std::string const& varName, int32 value);
+    auto   getAllLocalVars(std::string const& var) -> sol::table;
     uint32 getLocalVar(std::string const& var);
     void   setLocalVar(std::string const& var, uint32 val);
     void   resetLocalVars();
@@ -154,12 +154,12 @@ public:
     void  setWeather(uint8 weatherType); // Set Weather condition (GM COMMAND)
 
     // PC Instructions
-    void changeMusic(uint8 blockID, uint8 musicTrackID);                    // Sets the specified music Track for specified music block.
-    void sendMenu(uint32 menu);                                             // Displays a menu (AH,Raise,Tractor,MH etc)
-    bool sendGuild(uint16 guildID, uint8 open, uint8 close, uint8 holiday); // Sends guild shop menu
-    void openSendBox();                                                     // Opens send box (to deliver items)
-    void leaveGame();                                                       // Character leaving game
-    void sendEmote(CLuaBaseEntity* target, uint8 emID, uint8 emMode);       // Character emits emote packet.
+    void changeMusic(uint8 blockID, uint8 musicTrackID);                         // Sets the specified music Track for specified music block.
+    void sendMenu(uint32 menu);                                                  // Displays a menu (AH,Raise,Tractor,MH etc)
+    bool sendGuild(uint16 guildID, uint8 open, uint8 close, uint8 holiday);      // Sends guild shop menu
+    void openSendBox();                                                          // Opens send box (to deliver items)
+    void leaveGame();                                                            // Character leaving game
+    void sendEmote(CLuaBaseEntity* target, uint8 emID, uint8 emMode, bool self); // Character emits emote packet.
 
     // Location and Positioning
     int16 getWorldAngle(sol::variadic_args va);                                 // return angle (rot) between two points (vector from a to b), aligned to absolute cardinal degree
@@ -200,7 +200,9 @@ public:
     void   setTeleportMenu(uint16 type, sol::object const& teleportObj); // Set favorites or menu layout preferences for homepoints or survival guides
     auto   getTeleportMenu(uint8 type) -> sol::table;                    // Get favorites and menu layout preferences
     void   setHomePoint();                                               // Sets character's homepoint
+    void   setCustomHomePoint(float x, float y, float z, uint8 zone);    // Sets character's homepoint
     bool   isCurrentHomepoint();                                         // Checks to a character's homepoint vs their current position.
+    void   setJailCell();
 
     void resetPlayer(const char* charName); // if player is stuck, GM command @resetPlayer name
 
@@ -226,6 +228,7 @@ public:
     auto getCurrentGPItem(uint8 guildID) -> std::tuple<uint16, uint16>;                                 // Gets current GP item id and max points
     bool breakLinkshell(std::string const& lsname);                                                     // Breaks all pearls/sacks
     bool addLinkpearl(std::string const& lsname, bool equip);                                           // Creates a linkpearl (pearlsack for GMs)
+    auto getLinkshellName() -> std::string;                                                             // Gets Player's Linkshell1 name
 
     auto addSoulPlate(std::string const& name, uint16 mobFamily, uint8 zeni, uint16 skillIndex, uint8 fp) -> std::optional<CLuaItem>;
 
@@ -308,7 +311,8 @@ public:
 
     bool canUseMisc(uint16 misc); // Check misc flags of current zone.
 
-    uint8 getSpeed(); // скорость передвижения сущности
+    uint8 getSpeed();         // Base movement speed
+    uint8 getAdjustedSpeed(); // Returns the speed value with modifiers
     void  setSpeed(uint8 speedVal);
 
     uint32 getPlaytime(sol::object const& shouldUpdate);
@@ -377,6 +381,10 @@ public:
     void   setUnityLeader(uint8 leaderID);                                    // Sets a player's unity leader
     uint8  getUnityLeader();                                                  // Returns player's unity leader
     auto   getUnityRank(sol::object const& unityObj) -> std::optional<uint8>; // Returns current rank of player's unity
+    auto   getClaimedDeedMask() -> sol::table;                                // Returns a table corresponding to claimed items from AMAN Validator
+    void   toggleReceivedDeedRewards();
+    void   setClaimedDeed(uint16 deedBitNum);
+    void   resetClaimedDeeds();
 
     void  addAssault(uint8 missionID);          // Add Mission
     void  delAssault(uint8 missionID);          // Delete Mission from Mission Log
@@ -402,6 +410,7 @@ public:
     uint8  getJobPointLevel(uint16 jpType); // Returns Value of Job Point Type
     void   setJobPoints(uint16 amount);     // Set Job Points for current job
     void   setCapacityPoints(uint16 amount);
+    void   masterJob();
 
     uint32 getGil();
     void   addGil(int32 gil);
@@ -457,6 +466,7 @@ public:
     int16 addTP(int16 amount); // Modify tp of Entity +/-
     void  setTP(int16 value);  // Set tp of Entity to value
     int16 delTP(int16 amount); // Subtract tp of Entity
+    void  homepoint();
 
     void  updateHealth();
     uint8 getAverageItemLevel();
@@ -650,6 +660,7 @@ public:
     void charm(CLuaBaseEntity const* target);                          // applies charm on target
     void charmDuration(CLuaBaseEntity const* target, uint32 duration); // applies charm on target for duration
     void uncharm();                                                    // removes charm on target
+    bool isTandemValid();                                              // verifies that the entity satifies all tandem conditions for tandem blow and tandem strike
 
     uint8 addBurden(uint8 element, uint8 burden);
     uint8 getOverloadChance(uint8 element);
@@ -661,14 +672,14 @@ public:
     uint16 getEVA();
     int    getRACC();
     uint16 getRATT();
-    uint16 getILvlMacc();
+    uint16 getILvlMacc(SLOTTYPE slot);
     uint16 getILvlSkill();
     bool   isSpellAoE(uint16 spellId);
 
     int32 physicalDmgTaken(double damage, sol::variadic_args va);
     int32 magicDmgTaken(double damage, sol::variadic_args va);
     int32 rangedDmgTaken(double damage, sol::variadic_args va);
-    int32 breathDmgTaken(double damage);
+    int32 breathDmgTaken(double damage, sol::variadic_args va);
     void  handleAfflatusMiseryDamage(double damage);
 
     bool   isWeaponTwoHanded();
@@ -744,6 +755,17 @@ public:
     void setPetMod(uint16 modID, int16 amount);
     void delPetMod(uint16 modID, int16 amount);
 
+    // Adventuring Fellow
+    void  spawnFellow(uint8 fellowId);                            // Spawns NPC Fellow
+    void  despawnFellow();                                        // deSpawns NPC Fellow
+    auto  getFellow() -> std::optional<CLuaBaseEntity>;           // Creates an LUA reference to a fellow entity
+    void  triggerFellowChat(uint8 chatType);                      // calls the Chat system when talking to a fellow
+    void  fellowAttack(CLuaBaseEntity* PEntity);                  // Forces Fellow to attack target
+    void  fellowRetreat();                                        // Disengages Fellow
+    int32 getFellowValue(std::string const& option);              // Manipulating DB Fellow Values
+    void  setFellowValue(std::string const& option, int32 value); // Manipulating DB Fellow Values
+    void  delFellowValue();                                       // Clears Fellow from DB
+
     bool  hasAttachment(uint16 itemID);
     auto  getAutomatonName() -> std::string;
     uint8 getAutomatonFrame();
@@ -781,6 +803,7 @@ public:
 
     void   spawn(sol::object const& despawnSec, sol::object const& respawnSec);
     bool   isSpawned();
+    bool   canSpawn();
     auto   getSpawnPos() -> std::map<std::string, float>;               // Get Mob spawn position (x,y,z)
     void   setSpawn(float x, float y, float z, sol::object const& rot); // Sets spawn point
     uint32 getRespawnTime();
@@ -800,6 +823,7 @@ public:
     bool getUntargetable();
     void setIsAggroable(bool isAggroable);
     bool isAggroable();
+    void setAlwaysRender(bool alwaysRender);
 
     void  setDelay(uint16 delay);             // sets a mobs weapon delay
     int16 getDelay();                         // return the delay value
@@ -832,10 +856,10 @@ public:
 
     bool actionQueueEmpty(); // returns whether the action queue is empty or not
 
-    void  castSpell(sol::object const& spell, sol::object entity);                                                                                                       // forces a mob to cast a spell (parameter = spell ID, otherwise picks a spell from its list)
-    void  useJobAbility(uint16 skillID, sol::object const& pet);                                                                                                         // forces a job ability use (players/pets only)
-    void  useMobAbility(sol::variadic_args va);                                                                                                                          // forces a mob to use a mobability (parameter = skill ID)
-    int32 triggerDrawIn(CLuaBaseEntity* PMobEntity, sol::object const& includePt, sol::object const& drawRange, sol::object const& maxReach, sol::object const& target); // forces a mob to draw in target
+    void  castSpell(sol::object const& spell, sol::object entity);                                                                                                                                           // forces a mob to cast a spell (parameter = spell ID, otherwise picks a spell from its list)
+    void  useJobAbility(uint16 skillID, sol::object const& pet);                                                                                                                                             // forces a job ability use (players/pets only)
+    void  useMobAbility(sol::variadic_args va);                                                                                                                                                              // forces a mob to use a mobability (parameter = skill ID)
+    int32 triggerDrawIn(CLuaBaseEntity* PMobEntity, sol::object const& includePt, sol::object const& drawRange, sol::object const& maxReach, sol::object const& target, sol::object const& incDeadAndMount); // forces a mob to draw in target
     bool  hasTPMoves();
 
     void weaknessTrigger(uint8 level);
@@ -853,7 +877,6 @@ public:
     uint16 getDespoilDebuff(uint16 itemID);                                              // gets the status effect id to apply to the mob on successful despoil
     bool   itemStolen();                                                                 // sets mob's ItemStolen var = true
     int16  getTHlevel();                                                                 // Returns the Monster's current Treasure Hunter Tier
-    void   addDropListModification(uint16 id, uint16 newRate, sol::variadic_args va);    // Adds a modification to the drop list of this mob, erased on death
 
     uint32 getAvailableTraverserStones();
     time_t getTraverserEpoch();
@@ -879,14 +902,30 @@ public:
     bool setChocoboRaisingInfo(sol::table table);
     bool deleteRaisedChocobo();
 
-    bool clearSession(std::string const& playerName);
-    void sendNpcEmote(CLuaBaseEntity* PBaseEntity, sol::object const& p0, sol::object const& p1, sol::object const& p2);
-    void clearActionQueue();
-    void clearTimerQueue();
+    bool   clearSession(std::string const& playerName);
+    void   setSpawnType(SPAWNTYPE spawnType);
+    uint32 getWorldPassRedeemTime();
+    uint32 getWorldpassId(uint32 targid);
+    void   sendNpcEmote(CLuaBaseEntity* PBaseEntity, sol::object const& p0, sol::object const& p1, sol::object const& p2);
+    void   sendMobEmote(CLuaBaseEntity* PBaseEntity, sol::object const& p0, sol::object const& p1, sol::object const& p2);
+    void   clearActionQueue();
+    void   clearTimerQueue();
+    void   setDigTable();               // Sets PChar Last Dig Table
+    auto   getDigTable() -> sol::table; // Gets PChar Last Dig Table
 
     uint8 getMannequinPose(uint16 itemID);
     void  setMannequinPose(uint16 itemID, uint8 race, uint8 pose);
     void  setWallhackAllowed(bool allowed); // Sets whether an entity should ignore wallhack flags in pathfind.
+
+    void   submitContestFish(uint32 score);
+    void   withdrawContestFish();
+    uint32 getContestScore();
+    uint8  getContestRank();
+    bool   hasContestRewardPending(uint16 contestId = 0);
+    auto   getAvailableContestRewards(uint16 contestId = 0) -> sol::table;
+    void   giveContestReward(uint16 contestId);
+    auto   getAwardHistory() -> sol::table;
+    void   faceTarget(CLuaBaseEntity* npc);
 
     static void Register();
 };

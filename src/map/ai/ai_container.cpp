@@ -19,7 +19,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 ===========================================================================
 */
 
-#include "ai_container.h"
+#include "ai/ai_container.h"
 
 #include "../entities/baseentity.h"
 #include "../entities/battleentity.h"
@@ -366,7 +366,7 @@ bool CAIContainer::Internal_UseItem(uint16 targetid, uint8 loc, uint8 slotid)
 
 CState* CAIContainer::GetCurrentState()
 {
-    if (!m_stateStack.empty())
+    if (!m_stateStack.empty() && m_stateStack.top() != nullptr)
     {
         return m_stateStack.top().get();
     }

@@ -2,8 +2,6 @@
 -- Bubble Shower
 -- Deals Water damage in an area of effect. Additional effect: STR Down
 -----------------------------------
-require("scripts/globals/settings")
-require("scripts/globals/status")
 require("scripts/globals/mobskills")
 -----------------------------------
 local mobskillObject = {}
@@ -25,9 +23,11 @@ mobskillObject.onMobWeaponSkill = function(target, mob, skill)
     end
 
     local dmgmod = xi.mobskills.mobBreathMove(mob, target, hpdmg, 1, xi.magic.ele.WATER, bubbleCap)
+
     local dmg = xi.mobskills.mobFinalAdjustments(dmgmod, mob, skill, target, xi.attackType.BREATH, xi.damageType.WATER, xi.mobskills.shadowBehavior.IGNORE_SHADOWS)
 
     target:takeDamage(dmg, mob, xi.attackType.BREATH, xi.damageType.WATER)
+
     return dmg
 end
 

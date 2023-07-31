@@ -28,7 +28,7 @@ CREATE TABLE `item_usable` (
   `reuseDelay` int(10) unsigned NOT NULL DEFAULT '0',
   `aoe` tinyint(1) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`itemid`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 PACK_KEYS=1 CHECKSUM=1;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 PACK_KEYS=1 CHECKSUM=1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1858,6 +1858,9 @@ INSERT INTO `item_usable` VALUES (6177,'copy_of_life-form_study',1,1,117,0,0,0,0
 INSERT INTO `item_usable` VALUES (6178,'copy_of_hrohjs_record',1,1,117,0,0,0,0,0);
 INSERT INTO `item_usable` VALUES (6179,'copy_of_the_bell_tolls',1,1,117,0,0,0,0,0);
 INSERT INTO `item_usable` VALUES (6181,'beitetsu_parcel',1,1,24,0,0,0,0,0);
+INSERT INTO `item_usable` VALUES (6187,'piece_of_slimeulation_candy',1,1,24,0,0,0,0,0);
+INSERT INTO `item_usable` VALUES (6188,'piece_of_she-slime_candy',1,1,24,0,0,0,0,0);
+INSERT INTO `item_usable` VALUES (6189,'piece_of_metal_slime_candy',1,1,24,0,0,0,0,0);
 INSERT INTO `item_usable` VALUES (6186,'slime_rocket',1,1,115,0,0,0,0,0);
 INSERT INTO `item_usable` VALUES (6190,'spriggan_spark',1,1,114,0,0,0,0,0);
 INSERT INTO `item_usable` VALUES (6211,'slice_of_marinara_pizza',1,1,28,0,0,0,0,0);
@@ -2051,8 +2054,8 @@ INSERT INTO `item_usable` VALUES (14787,'deadeye_earring',1,3,0,0,20,30,1800,0);
 INSERT INTO `item_usable` VALUES (14788,'gamushara_earring',1,3,0,0,20,30,1800,0);
 INSERT INTO `item_usable` VALUES (14789,'naruko_earring',1,3,0,0,20,30,1800,0);
 INSERT INTO `item_usable` VALUES (14790,'reraise_earring',1,8,33,0,10,30,60,0);
-INSERT INTO `item_usable` VALUES (14810,'signal_pearl',1,3,0,0,1,30,72000,0);
-INSERT INTO `item_usable` VALUES (14811,'tactics_pearl',1,3,0,0,4,30,600,0);
+INSERT INTO `item_usable` VALUES (14810,'signal_pearl',1,3,55,0,1,30,72000,0);
+INSERT INTO `item_usable` VALUES (14811,'tactics_pearl',1,3,55,0,4,30,600,0);
 INSERT INTO `item_usable` VALUES (14855,'mist_mitts',1,1,0,0,10,30,600,0);
 INSERT INTO `item_usable` VALUES (14864,'palmers_bangles',1,1,0,0,20,30,60,0);
 INSERT INTO `item_usable` VALUES (14925,'hydra_mittens',1,3,0,0,1,30,72000,0);
@@ -2350,6 +2353,8 @@ INSERT INTO `item_usable` VALUES (26271,'hi-elixir_tank',1,2,55,0,3,30,60,0);
 INSERT INTO `item_usable` VALUES (26272,'super_reraiser_tank',1,2,55,0,5,30,60,0);
 INSERT INTO `item_usable` VALUES (26517,'shadow_lord_shirt',1,8,79,0,1,30,72000,0);
 INSERT INTO `item_usable` VALUES (25679,'white_rarab_cap_+1',1,8,33,0,1,30,72000,0);
+INSERT INTO `item_usable` VALUES (25774,'fancy_gilet',1,2,55,0,1,30,86400,0); -- Dispense: persikos snow cone
+INSERT INTO `item_usable` VALUES (25775,'fancy_top',1,2,55,0,1,30,86400,0); -- Dispense: persikos snow cone
 INSERT INTO `item_usable` VALUES (26165,'facility_ring',1,3,76,0,3,5,900,0);
 INSERT INTO `item_usable` VALUES (26720,'sheep_cap_+1',1,2,55,0,1,30,86400,0);
 INSERT INTO `item_usable` VALUES (26955,'behemoth_suit_+1',1,2,55,0,1,30,72000,0);
@@ -2363,6 +2368,8 @@ INSERT INTO `item_usable` VALUES (28562,'duodecennial_ring',1,3,76,0,12,15,3600,
 INSERT INTO `item_usable` VALUES (28563,'vocation_ring',1,3,76,0,12,15,3600,0);
 INSERT INTO `item_usable` VALUES (28568,'resolution_ring',1,3,76,0,5,5,900,0);
 INSERT INTO `item_usable` VALUES (28569,'expertise_ring',1,3,76,0,10,5,900,0);
+INSERT INTO `item_usable` VALUES (28652,'hatchling_shield',1,1,55,8,1,30,86400,0);
+
 /*!40000 ALTER TABLE `item_usable` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

@@ -3,6 +3,7 @@
 -----------------------------------
 local huxzoiGlobal = require('scripts/zones/Grand_Palace_of_HuXzoi/globals')
 local ID = require('scripts/zones/Grand_Palace_of_HuXzoi/IDs')
+require("scripts/globals/teleports")
 require('scripts/globals/conquest')
 require('scripts/globals/status')
 -----------------------------------
@@ -23,8 +24,8 @@ zoneObject.onInitialize = function(zone)
     huxzoiGlobal.pickTemperancePH()
 end
 
-zoneObject.onConquestUpdate = function(zone, updatetype)
-    xi.conq.onConquestUpdate(zone, updatetype)
+zoneObject.onConquestUpdate = function(zone, updatetype, influence, owner, ranking, isConquestAlliance)
+    xi.conq.onConquestUpdate(zone, updatetype, influence, owner, ranking, isConquestAlliance)
 end
 
 zoneObject.onZoneIn = function(player, prevZone)
@@ -71,12 +72,8 @@ end
 
 zoneObject.onEventFinish = function(player, csid, option)
     if csid >= 150 and csid <= 159 then
+        xi.teleport.clearEnmityList(player)
         player:setLocalVar("Hu-Xzoi-TP", 0)
-
-        -- Wipe hate through teleporters
-        for _, entry in pairs(player:getNotorietyList()) do
-            entry:clearEnmity(player)
-        end
     end
 end
 

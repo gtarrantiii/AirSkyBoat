@@ -5,10 +5,7 @@
 --  Type: Physical
 --  Utsusemi/Blink absorb: 3 shadows
 --  Range: Melee
---  Notes:
 -----------------------------------
-require("scripts/globals/settings")
-require("scripts/globals/status")
 require("scripts/globals/mobskills")
 -----------------------------------
 local mobskillObject = {}
@@ -27,7 +24,9 @@ mobskillObject.onMobWeaponSkill = function(target, mob, skill)
         target:takeDamage(dmg, mob, xi.attackType.PHYSICAL, xi.damageType.SLASHING)
     end
 
-    xi.mobskills.mobPhysicalStatusEffectMove(mob, target, skill, xi.effect.SLOW, 2500, 0, math.random(120, 180))
+    if not target:hasStatusEffect(xi.effect.HASTE) then
+        xi.mobskills.mobPhysicalStatusEffectMove(mob, target, skill, xi.effect.SLOW, 2500, 0, math.random(120, 180))
+    end
 
     return dmg
 end

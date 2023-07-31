@@ -11,9 +11,7 @@ require("scripts/globals/missions")
 require("scripts/globals/npc_util")
 require("scripts/globals/quests")
 require("scripts/globals/roe")
-require("scripts/globals/settings")
 require("scripts/globals/spell_data")
-require("scripts/globals/status")
 require("scripts/globals/zone")
 require("scripts/missions/amk/helpers")
 require("scripts/missions/wotg/helpers")
@@ -576,6 +574,8 @@ xi.helm.helmInfo =
                     {   29.643, -24.514,  361.756 },
                     {  -29.950, -24.155,  495.225 },
                     {  306.851,  23.677, -330.013 },
+                    {  285.760,  23.677, -328.804 },
+                    {  288.659,  23.677, -394.522 },
                     {  -66.369, -24.960,  535.166 },
                     {  -94.736, -24.929,  653.229 },
                     { -170.298, -32.188,   94.226 },
@@ -1534,7 +1534,7 @@ xi.helm.onTrade = function(player, npc, trade, helmType, csid, func)
                 player:startEvent(csid, item, broke, full)
             end
 
-            player:sendEmote(npc, info.animation, xi.emoteMode.MOTION)
+            player:sendEmote(npc, info.animation, xi.emoteMode.MOTION, false)
 
             -- WotG : The Price of Valor; Success does not award an item, but only KI.
             if xi.wotg.helpers.helmTrade(player, helmType, broke) then

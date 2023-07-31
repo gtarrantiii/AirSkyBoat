@@ -25,17 +25,23 @@
 #include "../instance.h"
 #include "../status_effect_container.h"
 #include "../utils/zoneutils.h"
-#include "../vana_time.h"
+#include "common/vana_time.h"
 #include "map/zone.h"
 #include "zone_in.h"
 
-/************************************************************************
- *                                                                       *
- *  Returns the ID of the mog house map to be used                       *
- *                                                                       *
- ************************************************************************/
+#include "common/vana_time.h"
 
-uint16 GetMogHouseID(CCharEntity* PChar)
+#include "entities/charentity.h"
+#include "utils/zoneutils.h"
+
+#include "instance.h"
+#include "status_effect_container.h"
+#include "zone.h"
+
+// Returns the Model ID of the mog house to be used
+// This is not the same as the actual Zone ID!
+// (These used to be entries in the ZONEID enum, but that was wrong, knowing what we know now)
+uint16 GetMogHouseModelID(CCharEntity* PChar)
 {
     // TODO: verify wtf is going on with this function. either these aren't supposed to be zone IDs or somehow Jeuno's mog is western adoulin!
     switch (zoneutils::GetCurrentRegion(PChar->getZone()))
@@ -174,11 +180,11 @@ CZoneInPacket::CZoneInPacket(CCharEntity* PChar, const EventInfo* currentEvent)
         ref<uint16>(0x54) = 0xFFFF;
     }
 
-    ref<uint8>(0x56) = PChar->PInstance ? PChar->PInstance->GetBackgroundMusicDay() : PChar->loc.zone->GetBackgroundMusicDay();
-    ref<uint8>(0x58) = PChar->PInstance ? PChar->PInstance->GetBackgroundMusicNight() : PChar->loc.zone->GetBackgroundMusicNight();
-    ref<uint8>(0x5A) = PChar->PInstance ? PChar->PInstance->GetSoloBattleMusic() : PChar->loc.zone->GetSoloBattleMusic();
-    ref<uint8>(0x5C) = PChar->PInstance ? PChar->PInstance->GetPartyBattleMusic() : PChar->loc.zone->GetPartyBattleMusic();
-    ref<uint8>(0x5E) = PChar->animation == ANIMATION_MOUNT ? 0x54 : 0xD4;
+    ref<uint16>(0x56) = PChar->PInstance ? PChar->PInstance->GetBackgroundMusicDay() : PChar->loc.zone->GetBackgroundMusicDay();
+    ref<uint16>(0x58) = PChar->PInstance ? PChar->PInstance->GetBackgroundMusicNight() : PChar->loc.zone->GetBackgroundMusicNight();
+    ref<uint16>(0x5A) = PChar->PInstance ? PChar->PInstance->GetSoloBattleMusic() : PChar->loc.zone->GetSoloBattleMusic();
+    ref<uint16>(0x5C) = PChar->PInstance ? PChar->PInstance->GetPartyBattleMusic() : PChar->loc.zone->GetPartyBattleMusic();
+    ref<uint8>(0x5E)  = PChar->animation == ANIMATION_MOUNT ? 0x54 : 0xD4;
 
     ref<uint16>(0x60) = PChar->loc.boundary;
     ref<uint16>(0x68) = PChar->loc.zone->GetWeather();
@@ -206,8 +212,9 @@ CZoneInPacket::CZoneInPacket(CCharEntity* PChar, const EventInfo* currentEvent)
     if (PChar->m_moghouseID != 0)
     {
         ref<uint8>(0x80)  = 1;
-        ref<uint16>(0xAA) = GetMogHouseID(PChar);   // Mog House id
-        ref<uint8>(0xAE)  = GetMogHouseFlag(PChar); // Mog House leaving flag
+        ref<uint16>(0xAA) = GetMogHouseModelID(PChar); // Mog House id
+        ref<uint8>(0xAE)  = GetMogHouseFlag(PChar);    // Mog House leaving flag
+        PChar->setCharVar("[Moghouse]Exit_Pending", 1);
     }
     else
     {

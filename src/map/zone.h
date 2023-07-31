@@ -25,18 +25,21 @@
 #include "common/cbasetypes.h"
 #include "common/mmo.h"
 #include "common/taskmgr.h"
+#include "common/vana_time.h"
+#include "common/xirand.h"
 
 #include <list>
 #include <map>
+#include <set>
 #include <unordered_map>
 
 #include "battlefield_handler.h"
 #include "campaign_handler.h"
-#include "trigger_area.h"
-#include "vana_time.h"
-
+#include "common/vana_time.h"
+#include "los/zone_los.h"
 #include "navmesh.h"
 #include "packets/weather.h"
+#include "trigger_area.h"
 
 enum ZONEID : uint16
 {
@@ -345,6 +348,15 @@ enum ZONEID : uint16
     MAX_ZONEID                          = 299,
 };
 
+enum NATION_TYPE : uint8
+{
+    NATION_SANDORIA = 0x00,
+    NATION_BASTOK   = 0x01,
+    NATION_WINDURST = 0x02,
+    NATION_BEASTMEN = 0x03,
+    NATION_NEUTRAL  = 0xFF,
+};
+
 enum class REGION_TYPE : uint8
 {
     RONFAURE         = 0,
@@ -438,32 +450,34 @@ enum class TELEPORT_TYPE : uint8
     HOMEPOINT       = 9,
     SURVIVAL        = 10,
     WAYPOINT        = 11,
+    ESCHAN_PORTAL   = 12,
 };
 
 enum ZONEMISC
 {
-    MISC_NONE     = 0x0000, // Able to be used in any area
-    MISC_ESCAPE   = 0x0001, // Ability to use Escape Spell
-    MISC_FELLOW   = 0x0002, // Ability to summon Fellow NPC
-    MISC_MOUNT    = 0x0004, // Ability to use Chocobos and mounts
-    MISC_MAZURKA  = 0x0008, // Ability to use Mazurka Spell
-    MISC_TRACTOR  = 0x0010, // Ability to use Tractor Spell
-    MISC_MOGMENU  = 0x0020, // Ability to communicate with Nomad Moogle (menu access mog house)
-    MISC_COSTUME  = 0x0040, // Ability to use a Costumes
-    MISC_PET      = 0x0080, // Ability to summon Pets
-    MISC_TREASURE = 0x0100, // Presence in the global zone TreasurePool
-    MISC_AH       = 0x0200, // Ability to use the auction house
-    MISC_YELL     = 0x0400, // Send and receive /yell commands
-    MISC_TRUST    = 0x0800, // Ability to summon Trust NPC
-    MISC_CAMPAIGN = 0x1000, // Campaign zones
+    MISC_NONE             = 0x0000, // Able to be used in any area
+    MISC_ESCAPE           = 0x0001, // Ability to use Escape Spell
+    MISC_FELLOW           = 0x0002, // Ability to summon Fellow NPC
+    MISC_MOUNT            = 0x0004, // Ability to use Chocobos and mounts
+    MISC_MAZURKA          = 0x0008, // Ability to use Mazurka Spell
+    MISC_TRACTOR          = 0x0010, // Ability to use Tractor Spell
+    MISC_MOGMENU          = 0x0020, // Ability to communicate with Nomad Moogle (menu access mog house)
+    MISC_COSTUME          = 0x0040, // Ability to use a Costumes
+    MISC_PET              = 0x0080, // Ability to summon Pets
+    MISC_TREASURE         = 0x0100, // Presence in the global zone TreasurePool
+    MISC_AH               = 0x0200, // Ability to use the auction house
+    MISC_YELL             = 0x0400, // Send and receive /yell commands
+    MISC_TRUST            = 0x0800, // Ability to summon Trust NPC
+    MISC_LOS_PLAYER_BLOCK = 0x1000, // Players can't use magic/JAs through walls if this is set
+    MISC_LOS_OFF          = 0x2000, // Zone should not have LoS checks
 };
 
 struct zoneMusic_t
 {
-    uint8 m_songDay;   // music (daytime)
-    uint8 m_songNight; // music (nighttime)
-    uint8 m_bSongS;    // battle music (solo)
-    uint8 m_bSongM;    // battle music (party)
+    uint16 m_songDay;   // music (daytime)
+    uint16 m_songNight; // music (nighttime)
+    uint16 m_bSongS;    // battle music (solo)
+    uint16 m_bSongM;    // battle music (party)
 };
 
 struct zoneWeather_t
@@ -493,6 +507,111 @@ struct zoneLine_t
     uint16     m_toZone;
     position_t m_toPos;
     ZONE_TYPE  m_toZoneType;
+};
+
+struct spawnGroup_t
+{
+    uint8                    maxSpawns; // Maximum number of mobs that can be concurrently spawned from this group
+    std::vector<CMobEntity*> groupMobs; // The complete group of mobs that make up the set
+    std::set<CMobEntity*>    readyMobs; // The set of mobs that are allowed to spawn from the group
+
+    spawnGroup_t()
+    {
+        maxSpawns = 0;
+    };
+
+    void shuffle()
+    {
+        std::shuffle(groupMobs.begin(), groupMobs.end(), xirand::rng());
+    };
+
+    // Initialize the set of ready mobs.
+    void prepareMobs()
+    {
+        if (groupMobs.size() > 0)
+        {
+            // Shuffle the vector
+            shuffle();
+
+            // Empty the ready mobs set
+            readyMobs.clear();
+
+            // Iterate over the vector and add mobs to the ready set until it is full
+            for (auto& mob : groupMobs)
+            {
+                if (readyMobs.size() < maxSpawns)
+                {
+                    readyMobs.insert(mob);
+                }
+            }
+        }
+    };
+
+    // Can be used to reset if things disappear and don't respawn
+    void refillMobs()
+    {
+        if (groupMobs.size() > 0)
+        {
+            // Shuffle the vector
+            shuffle();
+
+            // Iterate over the vector and add mobs to the ready set until it is full
+            for (auto& mob : groupMobs)
+            {
+                if (readyMobs.size() < maxSpawns && readyMobs.find(mob) != readyMobs.end())
+                {
+                    readyMobs.insert(mob);
+                }
+            }
+        }
+    };
+
+    CMobEntity* addMob()
+    {
+        // Adds any random mob from the set to the ready set
+        if (readyMobs.size() < maxSpawns)
+        {
+            // Shuffle the vector
+            std::shuffle(groupMobs.begin(), groupMobs.end(), xirand::rng());
+
+            // Iterate over the vector until we find a mob to add
+            for (auto& mob : groupMobs)
+            {
+                // Look for one to add to the set that isn't already added
+                if (readyMobs.size() < maxSpawns && readyMobs.find(mob) == readyMobs.end())
+                {
+                    addMob(mob);
+                    return mob;
+                }
+            }
+        }
+
+        return nullptr;
+    };
+
+    void addMob(CMobEntity* PMob)
+    {
+        if (readyMobs.size() < maxSpawns)
+        {
+            readyMobs.insert(PMob);
+        }
+    }
+
+    void removeMob(CMobEntity* PMob)
+    {
+        readyMobs.erase(PMob);
+    }
+
+    CMobEntity* replaceMob(CMobEntity* PMob)
+    {
+        removeMob(PMob);
+        return addMob();
+    }
+
+    bool isReady(CMobEntity* PMob)
+    {
+        return readyMobs.find(PMob) != readyMobs.end();
+    }
 };
 
 class CBasicPacket;
@@ -531,15 +650,15 @@ public:
     const std::string& GetName();
     zoneLine_t*        GetZoneLine(uint32 zoneLineID);
 
-    uint8 GetSoloBattleMusic() const;
-    uint8 GetPartyBattleMusic() const;
-    uint8 GetBackgroundMusicDay() const;
-    uint8 GetBackgroundMusicNight() const;
+    uint16 GetSoloBattleMusic() const;
+    uint16 GetPartyBattleMusic() const;
+    uint16 GetBackgroundMusicDay() const;
+    uint16 GetBackgroundMusicNight() const;
 
-    void SetSoloBattleMusic(uint8 music);
-    void SetPartyBattleMusic(uint8 music);
-    void SetBackgroundMusicDay(uint8 music);
-    void SetBackgroundMusicNight(uint8 music);
+    void SetSoloBattleMusic(uint16 music);
+    void SetPartyBattleMusic(uint16 music);
+    void SetBackgroundMusicDay(uint16 music);
+    void SetBackgroundMusicNight(uint16 music);
 
     auto queryEntitiesByName(std::string const& pattern) -> QueryByNameResult_t const&;
 
@@ -551,40 +670,40 @@ public:
     virtual CCharEntity* GetCharByID(uint32 id);
 
     // Gets an entity - ignores instances (use CBaseEntity->GetEntity if possible)
-    virtual CBaseEntity* GetEntity(uint16 targid, uint8 filter = -1); // получаем указатель на любую сущность в зоне
+    virtual CBaseEntity* GetEntity(uint16 targid, uint8 filter = -1); // we get a pointer to any entity in the zone
 
-    bool IsWeatherStatic() const; // погода в зоне не требует изменения (никогда не меняется)
+    bool IsWeatherStatic() const; // The weather in the zone does not require changes (never changes)
     bool CanUseMisc(uint16 misc) const;
     void SetWeather(WEATHER weatherCondition);
     void UpdateWeather();
 
-    virtual void SpawnPCs(CCharEntity* PChar);       // отображаем персонажей в зоне
-    virtual void SpawnMOBs(CCharEntity* PChar);      // отображаем MOBs в зоне
-    virtual void SpawnPETs(CCharEntity* PChar);      // отображаем PETs в зоне
-    virtual void SpawnNPCs(CCharEntity* PChar);      // отображаем NPCs в зоне
-    virtual void SpawnTRUSTs(CCharEntity* PChar);    // Display TRUSTs in zone
-    virtual void SpawnMoogle(CCharEntity* PChar);    // отображаем Moogle в MogHouse
-    virtual void SpawnTransport(CCharEntity* PChar); // отображаем транспорт
+    virtual void SpawnPCs(CCharEntity* PChar);       // We display the characters in the zone
+    virtual void SpawnMOBs(CCharEntity* PChar);      // We display MOBS in the zone
+    virtual void SpawnPETs(CCharEntity* PChar);      // We display Pets in the zone
+    virtual void SpawnNPCs(CCharEntity* PChar);      // display NPCS in the zone
+    virtual void SpawnTRUSTs(CCharEntity* PChar);    // displayTrusTsInZone
+    virtual void SpawnMoogle(CCharEntity* PChar);    // We display Moogle in Moghouse
+    virtual void SpawnTransport(CCharEntity* PChar); // We display transport
     void         SavePlayTime();
 
-    virtual void WideScan(CCharEntity* PChar, uint16 radius); // сканирование местности с заданным радиусом
+    virtual void WideScan(CCharEntity* PChar, uint16 radius); // scanning the area with a given radius
 
-    virtual void DecreaseZoneCounter(CCharEntity* PChar); // добавляем персонажа в зону
-    virtual void IncreaseZoneCounter(CCharEntity* PChar); // удаляем персонажа из зоны
+    virtual void DecreaseZoneCounter(CCharEntity* PChar); // Add the character to the zone
+    virtual void IncreaseZoneCounter(CCharEntity* PChar); // We remove the character from the zone
 
-    virtual void InsertNPC(CBaseEntity* PNpc);     // добавляем в зону npc
-    virtual void InsertMOB(CBaseEntity* PMob);     // добавляем в зону mob
-    virtual void InsertPET(CBaseEntity* PPet);     // добавляем в зону pet
-    virtual void InsertTRUST(CBaseEntity* PTrust); // Add a trust to the zone
+    virtual void InsertNPC(CBaseEntity* PNpc);     // Add to the NPC zone
+    virtual void InsertMOB(CBaseEntity* PMob);     // Add to the mob zone
+    virtual void InsertPET(CBaseEntity* PPet);     // Add to the pet zone
+    virtual void InsertTRUST(CBaseEntity* PTrust); // addATrustToTheZone
 
     virtual void DeletePET(CBaseEntity* PPet); // derefs the pet's ID from this zone
     virtual void DeleteTRUST(CBaseEntity* PTrust);
 
-    virtual void FindPartyForMob(CBaseEntity* PEntity);          // ищем группу для монстра
-    virtual void TransportDepart(uint16 boundary, uint16 zone);  // транспотр отправляется, необходимо собрать пассажиров
-    virtual void updateCharLevelRestriction(CCharEntity* PChar); // Removes the character's level restriction. If the zone has a level restriction it applies the zone's after removing it.
+    virtual void FindPartyForMob(CBaseEntity* PEntity);          // We are looking for a group for a monster
+    virtual void TransportDepart(uint16 boundary, uint16 zone);  // transport is sent, it is necessary to collect passengers
+    virtual void updateCharLevelRestriction(CCharEntity* PChar); // removesTheCharacter'sLevelRestrictionIfTheZoneHasALevelRestrictionItAppliesTheZone'sAfterRemovingIt
 
-    void InsertTriggerArea(CTriggerArea* triggerArea); // добавляем в зону активную область
+    void InsertTriggerArea(CTriggerArea* triggerArea); // Add an active area to the zone
 
     virtual void TOTDChange(TIMETYPE TOTD);
     virtual void PushPacket(CBaseEntity*, GLOBAL_MESSAGE_TYPE, CBasicPacket*);
@@ -595,11 +714,12 @@ public:
     bool           IsZoneActive() const;
     CZoneEntities* GetZoneEntities();
 
-    time_point      m_TriggerAreaCheckTime;
     weatherVector_t m_WeatherVector; // the probability of each weather type
 
-    virtual void ZoneServer(time_point tick, bool checkTriggerAreas);
-    void         CheckTriggerAreas(CCharEntity* PChar);
+    std::map<uint8, spawnGroup_t> m_SpawnGroups; // Map of spawn groups
+
+    virtual void ZoneServer(time_point tick);
+    void         CheckTriggerAreas();
 
     virtual void ForEachChar(std::function<void(CCharEntity*)> func);
     virtual void ForEachCharInstance(CBaseEntity* PEntity, std::function<void(CCharEntity*)> func);
@@ -620,6 +740,7 @@ public:
     CNavMesh* m_navMesh;            // zones navmesh for finding paths
     bool      m_updatedNavmesh;     // Flag to turn off special path code.
     bool      m_zoneCarefulPathing; // Zonewide careful pathing, should only be used with updated meshes.
+    ZoneLos*  lineOfSight = nullptr;
 
     time_point m_LoadedAt; // time zone was loaded
 
@@ -632,17 +753,19 @@ public:
     uint8  GetZoneAnimation();
     uint32 GetZoneAnimStartTime();
     uint16 GetZoneAnimLength();
+    void   LoadNavMesh();
+    void   LoadZoneLos();
 
 private:
-    ZONEID         m_zoneID; // ID зоны
+    ZONEID         m_zoneID;
     ZONE_TYPE      m_zoneType;
-    REGION_TYPE    m_regionID;    // ID области
-    CONTINENT_TYPE m_continentID; // ID континента
+    REGION_TYPE    m_regionID;
+    CONTINENT_TYPE m_continentID;
     uint8          m_levelRestriction;
-    std::string    m_zoneName;   // имя зоны
-    uint16         m_zonePort;   // порт зоны
-    uint32         m_zoneIP;     // IP зоны
-    bool           m_useNavMesh; // Use navmesh for roaming, chasing
+    std::string    m_zoneName;
+    uint16         m_zonePort;
+    uint32         m_zoneIP;
+    bool           m_useNavMesh;
 
     WEATHER m_Weather;
     uint32  m_WeatherChangeTime;
@@ -652,7 +775,7 @@ private:
     uint16 m_tax;
     uint16 m_miscMask;
 
-    zoneMusic_t m_zoneMusic; // информация о мелодиях, используемых в зоне
+    zoneMusic_t m_zoneMusic;
 
     std::unordered_map<std::string, uint32> m_LocalVars;
 
@@ -662,9 +785,8 @@ private:
     void LoadZoneLines();    // список zonelines (можно было бы заменить этот метод методом InsertZoneLine)
     void LoadZoneWeather();  // погода
     void LoadZoneSettings(); // настройки зоны
-    void LoadNavMesh();      // Load the zones navmesh. Must exist in scripts/zones/:zone/NavMesh.nav
 
-    CTreasurePool* m_TreasurePool; // глобальный TreasuerPool
+    CTreasurePool* m_TreasurePool;
 
     static const uint16 ReducedVerticalAggroZones[];
 
@@ -678,9 +800,10 @@ private:
     std::unordered_map<std::string, QueryByNameResult_t> m_queryByNameResults;
 
 protected:
-    CTaskMgr::CTask* ZoneTimer; // указатель на созданный таймер - ZoneServer. необходим для возможности его остановки
+    CTaskMgr::CTask* ZoneTimer;             // The pointer to the created timer is Zoneserver.necessary for the possibility of stopping it
+    CTaskMgr::CTask* ZoneTimerTriggerAreas; //
 
-    void createZoneTimer();
+    void createZoneTimers();
     void CharZoneIn(CCharEntity* PChar);
     void CharZoneOut(CCharEntity* PChar);
 
