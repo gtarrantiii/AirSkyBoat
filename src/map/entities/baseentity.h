@@ -22,9 +22,10 @@
 #ifndef _BASEENTITY_H
 #define _BASEENTITY_H
 
-#include "../packets/message_basic.h"
 #include "common/cbasetypes.h"
 #include "common/mmo.h"
+#include "packets/message_basic.h"
+
 #include <map>
 #include <memory>
 #include <vector>
@@ -142,8 +143,9 @@ enum MOUNTTYPE : uint8
     MOUNT_BYAKKO         = 33,
     MOUNT_NOBLE_CHOCOBO  = 34, // NOTE: This is currently blank, probably needs additional packets sent
     MOUNT_IXION          = 35,
+    MOUNT_PHUABO         = 36,
     //
-    MOUNT_MAX = 36,
+    MOUNT_MAX = 37,
 };
 
 enum class ALLEGIANCE_TYPE : uint8
@@ -216,6 +218,9 @@ struct EntityID_t
     uint16 targid;
 };
 
+class CAIContainer;
+class CBattlefield;
+class CInstance;
 class CZone;
 
 struct location_t
@@ -236,10 +241,6 @@ struct location_t
     {
     }
 };
-
-class CAIContainer;
-class CInstance;
-class CBattlefield;
 
 /************************************************************************
  *                                                                       *
@@ -271,12 +272,17 @@ public:
     virtual bool GetUntargetable() const; // checks if entity is untargetable
     virtual bool isWideScannable();       // checks if the entity should show up on wide scan
 
+    bool CanSeeTarget(CBaseEntity* target, bool fallbackNavMesh = true);
+    bool CanSeeTarget(const position_t& targetPoint, bool fallbackNavMesh = true);
+
     CBaseEntity* GetEntity(uint16 targid, uint8 filter = -1) const;
     void         SendZoneUpdate();
 
     void   ResetLocalVars();
     uint32 GetLocalVar(const char* var);
     void   SetLocalVar(const char* var, uint32 val);
+
+    std::map<std::string, uint32> GetAllLocalVars();
 
     // pre-tick update
     virtual void Tick(time_point) = 0;

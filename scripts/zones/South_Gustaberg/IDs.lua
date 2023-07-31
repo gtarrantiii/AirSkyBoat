@@ -32,6 +32,8 @@ zones[xi.zone.SOUTH_GUSTABERG] =
         FIRE_TAKE                     = 7417, -- You take <item> out of the fire.
         FIRE_LONGER                   = 7418, -- It may take a little while more to cook the <item>.
         MEAT_ALREADY_PUT              = 7419, -- The <item> is already in the fire.
+        GOLDFISH_NPC_DIALOGUE         = 7454, -- Hey! Get over here and play this game!
+        GOLDFISH_POINT_UPDATE         = 7499, -- <player>'s current point total is <int>.
         ITEMS_ITEMS_LA_LA             = 7527, -- You can hear a strange voice... Items, items, la la la la la
         GOBLIN_SLIPPED_AWAY           = 7533, -- The Goblin slipped away when you were not looking...
         PLAYER_OBTAINS_ITEM           = 7547, -- <name> obtains <item>!
@@ -79,17 +81,18 @@ zones[xi.zone.SOUTH_GUSTABERG] =
         },
         SMILE_HELPERS =
         {
-            [17216218] = 17216218,
-            [17216219] = 17216219,
-            [17216220] = 17216220,
-            [17216221] = 17216221,
-            [17216222] = 17216222,
-            [17216223] = 17216223,
-            [17216224] = 17216224,
-            [17216225] = 17216225,
-            [17216226] = 17216226,
-            [17216227] = 17216227,
+            [17216218] = 17216218,  -- Smile Helper
+            [17216219] = 17216219,  -- Smile Helper
+            [17216220] = 17216220,  -- Smile Helper
+            [17216221] = 17216221,  -- Smile Helper
+            [17216222] = 17216222,  -- Smile Helper
+            [17216223] = 17216223,  -- Smile Helper
+            [17216224] = 17216224,  -- Smile Helper
+            [17216225] = 17216225,  -- Smile Helper
+            [17216226] = 17216226,  -- Smile Helper
+            [17216227] = 17216227,  -- Smile Helper
         },
+        GOLDFISH_NPC = 17216210, -- Sunbreeze festival goldish NPC
     },
 }
 

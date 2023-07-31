@@ -1,7 +1,4 @@
 ﻿/*
- * roe.cpp
- *      Author: Kreidos | github.com/kreidos
- *
 ===========================================================================
 
   Copyright (c) 2020 Topaz Dev Teams
@@ -21,14 +18,18 @@
 
 ===========================================================================
 */
+
+#include "roe.h"
+
+#include "common/vana_time.h"
+
 #include <ctime>
 
+#include "common/vana_time.h"
 #include "lua/luautils.h"
 #include "packets/chat_message.h"
-#include "roe.h"
 #include "utils/charutils.h"
 #include "utils/zoneutils.h"
-#include "vana_time.h"
 
 #include "packets/char_spells.h"
 #include "packets/roe_questlog.h"
@@ -687,6 +688,7 @@ namespace roeutils
     void CycleUnityRankings()
     {
         TracyZoneScoped;
+
         if (!settings::get<bool>("main.ENABLE_ROE"))
         {
             return;
@@ -701,6 +703,7 @@ namespace roeutils
     void UpdateUnityRankings()
     {
         TracyZoneScoped;
+
         if (!settings::get<bool>("main.ENABLE_ROE"))
         {
             return;

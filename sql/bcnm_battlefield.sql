@@ -8,7 +8,7 @@ CREATE TABLE `bcnm_battlefield` (
   `battlefieldNumber` tinyint(3) DEFAULT NULL,
   `monsterId` int(10) NOT NULL,
   `conditions` tinyint(2) NOT NULL DEFAULT '0'
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 AVG_ROW_LENGTH=56;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 AVG_ROW_LENGTH=56;
 
 --
 -- Dumping data for table `bcnm_battlefield`
@@ -186,6 +186,8 @@ INSERT INTO `bcnm_battlefield` VALUES (36,1,17350936,3); -- toadal_recall
 INSERT INTO `bcnm_battlefield` VALUES (36,1,17350937,3);
 INSERT INTO `bcnm_battlefield` VALUES (36,1,17350938,3);
 INSERT INTO `bcnm_battlefield` VALUES (36,1,17350939,3);
+INSERT INTO `bcnm_battlefield` VALUES (37,1,17350941,3); -- mirror_mirror
+INSERT INTO `bcnm_battlefield` VALUES (37,1,17350942,2);
 INSERT INTO `bcnm_battlefield` VALUES (64,1,17367041,3); -- rank_2_mission (Waughroon Shrine)
 INSERT INTO `bcnm_battlefield` VALUES (64,1,17367042,3);
 INSERT INTO `bcnm_battlefield` VALUES (64,2,17367043,3);

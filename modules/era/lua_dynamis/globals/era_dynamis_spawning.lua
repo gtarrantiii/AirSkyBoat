@@ -368,7 +368,7 @@ xi.dynamis.normalDynamicSpawn = function(oMob, oMobIndex, target)
             },
             [xi.zone.DYNAMIS_VALKURM] =
             {
-                [337] = { 3131 }, -- Quadav
+                [337] = { 2554 }, -- Quadav
                 [334] = { 2544 }, -- Orc
                 [327] = { 2539 }, -- Goblin
                 [360] = { 2549 }, -- Yagudo
@@ -588,7 +588,7 @@ xi.dynamis.nonStandardDynamicSpawn = function(mobIndex, oMob, forceLink, zoneID,
             end },
             ["onMobEngaged"] = { function(mob, target) end },
             ["onMobFight"] = { function(mob, target) xi.dynamis.statueOnFight(mob, target) end },
-            ["onMobRoam"] = { function(mob) xi.dynamis.mobOnRoam(mob) end },
+            ["onMobRoam"] = { function(mob)  end },
             ["mixins"] = {  }
         },
         ["Nightmare"] =
@@ -681,6 +681,8 @@ xi.dynamis.nonStandardDynamicSpawn = function(mobIndex, oMob, forceLink, zoneID,
     mob:getZone():setLocalVar(string.format("MobIndex_%s", mob:getID()), mobIndex)
     mob:setLocalVar(string.format("MobIndex_%s", mob:getID()), mobIndex)
 
+    xi.dynamis.generatePath(mob, mobIndex)
+
     if dropLists[zoneID] and dropLists[zoneID][mob:getFamily()] then
         dropList = dropLists[zoneID][mob:getFamily()]
     end
@@ -702,7 +704,7 @@ xi.dynamis.nonStandardDynamicSpawn = function(mobIndex, oMob, forceLink, zoneID,
 
     if oMob ~= nil and oMob ~= 0 then
         mob:setLocalVar("Parent", oMob:getID())
-        if forceLink == true then mob:updateEnmity(oMob:getTarget()) end
+        if forceLink == true then mob:updateEnmity(target) end
     end
 end
 
@@ -730,6 +732,15 @@ xi.dynamis.nmDynamicSpawn = function(mobIndex, oMobIndex, forceLink, zoneID, tar
     end
     xi.dynamis.nmInfoLookup =
     {
+        -- 1 - name
+        -- 2 - groupId
+        -- 3 - groupZoneId
+        -- 4 - dropId
+        -- 5 - spellList
+        -- 6 - skillList
+        -- 7 - Type of mob
+        -- 8 - flags
+
         -- Below use used to lookup Beastmen NMs
         -- Goblin
         -- Dynamis - Beaucedine (Done)
@@ -911,22 +922,22 @@ xi.dynamis.nmDynamicSpawn = function(mobIndex, oMobIndex, forceLink, zoneID, tar
         -- Dynamis - Windurst (Done)
         ["Tzee Xicu Manifest"] = { "Tzee Xicu Mani.", 1, 187, 2510, 50, 95, "Statue Megaboss" }, -- WMb
         -- Dynamis - Xarcabard Non-Beastmen (Done)
-        ["Animated Hammer"] = { "A.Hammer", 81, 135, 99, 0, 9, "Animated Weapon" }, -- AHam
-        ["Animated Staff"] = { "A.Staff", 87, 135, 108, 0, 23, "Animated Weapon" }, -- ASta
-        ["Animated Longsword"] = { "A.Longsword", 84, 135, 104, 0, 24, "Animated Weapon" }, -- ALon
-        ["Animated Tabar"] = { "A.Tabar", 88, 135, 109, 0, 8, "Animated Weapon" }, -- ATab
-        ["Animated Great Axe"] = { "A.Great Axe", 80, 135, 97, 0, 12, "Animated Weapon" }, -- AGre
-        ["Animated Claymore"] = { "A.Claymore", 78, 135, 95, 0, 14, "Animated Weapon" }, -- ACla
-        ["Animated Spear"] = { "A.Spear", 86, 135, 107, 0, 19, "Animated Weapon" }, -- ASpe
-        ["Animated Scythe"] = { "A.Scythe", 85, 135, 105, 0, 20, "Animated Weapon" }, -- AScy
-        ["Animated Kunai"] = { "A.Kunai", 83, 135, 102, 0, 17, "Animated Weapon" }, -- AKun
-        ["Animated Tachi"] = { "A.Tachi", 89, 135, 110, 0, 13, "Animated Weapon" }, -- ATac
-        ["Animated Dagger"] = { "A.Dagger", 79, 135, 96, 0, 11, "Animated Weapon" }, -- ADag
-        ["Animated Knuckles"] = { "A.Knuckles", 82, 135, 101, 0,15, "Animated Weapon" }, -- AKnu
-        ["Animated Longbow"] = { "A.Longbow", 11, 135, 103, 0, 7, "Animated Weapon" }, -- Alon
-        ["Animated Gun"] = { "A.Gun", 12, 135, 98, 0, 18, "Animated Weapon" }, -- AGun
-        ["Animated Horn"] = { "A.Horn", 13, 135, 100, 0, 16, "Animated Weapon" }, -- AHor
-        ["Animated Shield"] = { "A.Shield", 14, 135, 106, 0, 21, "Animated Weapon" }, -- AShi
+        ["Animated Hammer"] = { "A.Hammer", 81, 135, 3248, 0, 9, "Animated Weapon" }, -- AHam
+        ["Animated Staff"] = { "A.Staff", 87, 135, 3249, 0, 23, "Animated Weapon" }, -- ASta
+        ["Animated Longsword"] = { "A.Longsword", 84, 135, 3240, 0, 24, "Animated Weapon" }, -- ALon
+        ["Animated Tabar"] = { "A.Tabar", 88, 135, 3242, 0, 8, "Animated Weapon" }, -- ATab
+        ["Animated Great Axe"] = { "A.Great Axe", 80, 135, 3243, 0, 12, "Animated Weapon" }, -- AGre
+        ["Animated Claymore"] = { "A.Claymore", 78, 135, 3241, 0, 14, "Animated Weapon" }, -- ACla
+        ["Animated Spear"] = { "A.Spear", 86, 135, 3245, 0, 19, "Animated Weapon" }, -- ASpe
+        ["Animated Scythe"] = { "A.Scythe", 85, 135, 3244, 0, 20, "Animated Weapon" }, -- AScy
+        ["Animated Kunai"] = { "A.Kunai", 83, 135, 3246, 0, 17, "Animated Weapon" }, -- AKun
+        ["Animated Tachi"] = { "A.Tachi", 89, 135, 3247, 0, 13, "Animated Weapon" }, -- ATac
+        ["Animated Dagger"] = { "A.Dagger", 79, 135, 3239, 0, 11, "Animated Weapon" }, -- ADag
+        ["Animated Knuckles"] = { "A.Knuckles", 82, 135, 3238, 0,15, "Animated Weapon" }, -- AKnu
+        ["Animated Longbow"] = { "A.Longbow", 11, 135, 3250, 0, 7, "Animated Weapon" }, -- Alon
+        ["Animated Gun"] = { "A.Gun", 12, 135, 3252, 0, 18, "Animated Weapon" }, -- AGun
+        ["Animated Horn"] = { "A.Horn", 13, 135, 3251, 0, 16, "Animated Weapon" }, -- AHor
+        ["Animated Shield"] = { "A.Shield", 14, 135, 3253, 0, 21, "Animated Weapon" }, -- AShi
         ["Satellite Hammer"] = { "S.Hammer", 81, 135, 0, 0, 9, "Satellite Weapon", 5251 }, -- SHam
         ["Satellite Staff"] = { "S.Staff", 87, 135, 0, 0, 23, "Satellite Weapon", 5251 }, -- SSta
         ["Satellite Longsword"] = { "S.Longsword", 84, 135, 0, 0, 24, "Satellite Weapon", 5763 }, -- SLon
@@ -1324,6 +1335,9 @@ xi.dynamis.nmDynamicSpawn = function(mobIndex, oMobIndex, forceLink, zoneID, tar
         entityFlags = flags,
         mixins = xi.dynamis.nmFunctions[xi.dynamis.nmInfoLookup[mobName][7]]["mixins"],
     })
+
+    xi.dynamis.generatePath(mob, mobIndex)
+
     if oMob ~= nil then
         if mainDynaLord == oMob:getID() and mobName == "Dynamis Lord" then
             mob:setSpawn(target:getXPos(), target:getYPos(), target:getZPos(), target:getRotPos())
@@ -1612,8 +1626,8 @@ xi.dynamis.spawnDynamicPet =function(target, oMob, mobJob)
             },
             ["Dagourmarche"] =
             {
-                ["onMobFight"] = { function(mob, target) end },
-                ["onMobRoam"] = { function(mob) end },
+                ["onMobFight"] = { function(mob, target) xi.dynamis.onFightMultiPet(mob, target) end },
+                ["onMobRoam"] = { function(mob) xi.dynamis.onRoamMultiPet(mob) end },
                 ["mixins"] = {  require("scripts/mixins/families/avatar"), },
             },
             ["Normal"] =
@@ -1627,8 +1641,8 @@ xi.dynamis.spawnDynamicPet =function(target, oMob, mobJob)
         {
             ["Dagourmarche"] =
             {
-                ["onMobFight"] = { function(mob, target) end },
-                ["onMobRoam"] = { function(mob) end },
+                ["onMobFight"] = { function(mob, target) xi.dynamis.onFightMultiPet(mob, target) end },
+                ["onMobRoam"] = { function(mob) xi.dynamis.onRoamMultiPet(mob) end },
                 ["mixins"] = {   },
             },
             ["Normal"] =
@@ -1648,8 +1662,8 @@ xi.dynamis.spawnDynamicPet =function(target, oMob, mobJob)
             },
             ["Dagourmarche"] =
             {
-                ["onMobFight"] = { function(mob, target) end },
-                ["onMobRoam"] = { function(mob) end },
+                ["onMobFight"] = { function(mob, target) xi.dynamis.onFightMultiPet(mob, target) end },
+                ["onMobRoam"] = { function(mob) xi.dynamis.onRoamMultiPet(mob) end },
                 ["mixins"] = {   },
             },
             ["Normal"] =
@@ -1713,40 +1727,18 @@ end
 --        Dynamis Mob Pathing/Roam        --
 --------------------------------------------
 
-xi.dynamis.mobOnRoam = function(mob) -- Handle pathing.
-    if mob:getRoamFlags() == xi.roamFlag.SCRIPTED then
-        local zoneID = mob:getZoneID()
-        local mobIndex = mob:getLocalVar(string.format("MobIndex_%s", mob:getID()))
-        for _, index in pairs(xi.dynamis.mobList[zoneID].patrolPaths) do
-            local table = xi.dynamis.mobList[zoneID][index].patrolPath
-            local maxDest = #table
-            if mobIndex == index then
-                for path, point in pairs(table) do
-                    local next = table[path + 1]
-                    local last = table[maxDest]
-                    local first = table[1]
-                    local prev = { x = point[1], y = point[2], z = point[3]}
-                    local dest = nil
-                    if next ~= nil then
-                        dest = { x = next[1], y = next[2], z = next[3]}
-                    end
-                    local last = { x = last[1], y = last[2], z = last[3]}
-                    local first = { x = first[1], y = first[2], z = first[3]}
-                    local spawn = mob:getSpawnPos()
-                    local current = mob:getPos()
-                    if last.x == current.x and last.y == current.y and last.z == current.z then
-                        mob:pathTo(first.x, first.y, first.z)
-                        return
-                    elseif prev.x == current.x and prev.y == current.y and prev.z == current.z then
-                        mob:pathTo(dest.x, dest.y, dest.z)
-                        return
-                    elseif spawn.x == current.x and spawn.y == current.y and spawn.z == current.z then
-                        mob:pathTo(first.x, first.y, first.z)
-                        return
-                    end
-                end
-            end
-        end
+xi.dynamis.generatePath = function(mob, mobIndex) -- Handle pathing.
+    local zoneID = mob:getZoneID()
+    if xi.dynamis.mobList[zoneID][mobIndex] ~= nil and xi.dynamis.mobList[zoneID][mobIndex].patrolPath ~= nil then
+        local table = xi.dynamis.mobList[zoneID][mobIndex].patrolPath
+        local first = table[1]
+        local second = table[2]
+        local pathNodes =
+        {
+            { x = first[1], y = first[2], z = first[3], wait = 1000 },
+            { x = second[1], y = second[2], z = second[3], wait = 1000 }
+        }
+        mob:pathThrough(pathNodes, xi.path.flag.PATROL)
     end
 end
 
@@ -1816,7 +1808,7 @@ xi.dynamis.setMobStats = function(mob)
         elseif mob:getFamily() == 358 then -- If Kindred
             mob:setMobLevel(math.random(77,80))
         else
-            mob:setMobLevel(math.random(75,77))
+            mob:setMobLevel(math.random(77.78))
         end
 
         if     job == xi.job.WAR then
@@ -1985,12 +1977,22 @@ xi.dynamis.setStatueStats = function(mob, mobIndex)
     mob:setMobMod(xi.mobMod.CHECK_AS_NM, 2)
     mob:setMobLevel(math.random(82,84))
     mob:setMod(xi.mod.DMG, -5000)
+    -- if an eye then does not have slow movement speed and has lower HP in xarc
+    if mob:getFamily() == 4 then
+        -- base hp of eyes is 2600 for beauc, xarc eyes have about 1040
+        if mob:getZoneID() == xi.zone.DYNAMIS_XARCABARD then
+            mob:addMod(xi.mod.HPP, -60)
+        end
+    -- all other statues have slow movement speed
+    else
+        mob:setSpeed(20)
+    end
+
     mob:setTrueDetection(true)
     -- Disabling WHM job trait mods because their job is set to WHM in the DB.
     mob:setMod(xi.mod.REGEN, 0)
     mob:setMod(xi.mod.MPHEAL, 0)
     mob:setMobMod(xi.mobMod.CHECK_AS_NM, 2)
-    mob:setSpeed(20)
 
     xi.dynamis.setMDB(mob)
     xi.dynamis.addParentListeners(mob)
@@ -2026,7 +2028,8 @@ xi.dynamis.setPetStats = function(mob)
     mob:setMobType(xi.mobskills.mobType.BATTLEFIELD)
     mob:addStatusEffect(xi.effect.BATTLEFIELD, 1, 0, 0, true)
     mob:setMobMod(xi.mobMod.CHECK_AS_NM, 1)
-    mob:setMobLevel(78)
+    mob:setMobMod(xi.mobMod.CHARMABLE, 0)
+    mob:setMobLevel(79)
     mob:setTrueDetection(true)
     xi.dynamis.setMDB(mob)
 end
@@ -2142,8 +2145,12 @@ m:addOverride("xi.dynamis.megaBossOnDeath", function(mob, player)
         mob:setLocalVar("GaveTimeExtension", 1)
     end
 
-    if player then
-        player:addTitle(xi.dynamis.dynaInfoEra[zoneID].winTitle) -- Give player the title
+    local zone = mob:getZone()
+    if zone:getLocalVar('TitleGranted') < 1 then
+        for _, p in pairs(zone:getPlayers()) do
+            p:addTitle(xi.dynamis.dynaInfoEra[zoneID].winTitle) -- Give player the title
+        end
+        zone:setLocalVar('TitleGranted', 1)
     end
 end)
 

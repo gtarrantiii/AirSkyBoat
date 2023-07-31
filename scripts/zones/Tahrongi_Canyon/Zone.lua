@@ -7,7 +7,6 @@ require('scripts/globals/chocobo_digging')
 require('scripts/globals/conquest')
 require('scripts/globals/missions')
 require('scripts/globals/chocobo')
-require('scripts/globals/world')
 require('scripts/globals/helm')
 require('scripts/globals/zone')
 require('scripts/missions/amk/helpers')
@@ -47,8 +46,8 @@ zoneObject.onZoneIn = function(player, prevZone)
     return cs
 end
 
-zoneObject.onConquestUpdate = function(zone, updatetype)
-    xi.conq.onConquestUpdate(zone, updatetype)
+zoneObject.onConquestUpdate = function(zone, updatetype, influence, owner, ranking, isConquestAlliance)
+    xi.conq.onConquestUpdate(zone, updatetype, influence, owner, ranking, isConquestAlliance)
 end
 
 zoneObject.onGameDay = function()
@@ -80,7 +79,11 @@ zoneObject.onZoneWeatherChange = function(weather)
 
         if habrok:isSpawned() and not isHabrokWeather(weather) then
             DespawnMob(ID.mob.HABROK)
-        elseif not habrok:isSpawned() and isHabrokWeather(weather) and os.time() > habrok:getLocalVar("pop") then
+        elseif
+            not habrok:isSpawned() and
+            isHabrokWeather(weather) and
+            os.time() > habrok:getLocalVar("pop")
+        then
             SpawnMob(ID.mob.HABROK)
         end
     end

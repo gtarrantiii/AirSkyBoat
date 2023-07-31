@@ -207,6 +207,7 @@ namespace mobutils
         JOBTYPE   mJob     = PMob->GetMJob();
         JOBTYPE   sJob     = PMob->GetSJob();
         uint8     mLvl     = PMob->GetMLevel();
+        uint8     sLvl     = PMob->GetSLevel();
         ZONE_TYPE zoneType = PMob->loc.zone->GetType();
 
         uint8 grade;
@@ -417,13 +418,13 @@ namespace mobutils
         uint16 mMND = GetBaseToRank(grade::GetJobGrade(PMob->GetMJob(), 7), mLvl);
         uint16 mCHR = GetBaseToRank(grade::GetJobGrade(PMob->GetMJob(), 8), mLvl);
 
-        uint16 sSTR = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 2), PMob->GetSLevel());
-        uint16 sDEX = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 3), PMob->GetSLevel());
-        uint16 sVIT = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 4), PMob->GetSLevel());
-        uint16 sAGI = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 5), PMob->GetSLevel());
-        uint16 sINT = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 6), PMob->GetSLevel());
-        uint16 sMND = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 7), PMob->GetSLevel());
-        uint16 sCHR = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 8), PMob->GetSLevel());
+        uint16 sSTR = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 2), sLvl);
+        uint16 sDEX = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 3), sLvl);
+        uint16 sVIT = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 4), sLvl);
+        uint16 sAGI = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 5), sLvl);
+        uint16 sINT = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 6), sLvl);
+        uint16 sMND = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 7), sLvl);
+        uint16 sCHR = GetBaseToRank(grade::GetJobGrade(PMob->GetSJob(), 8), sLvl);
 
         // As per conversation with Jimmayus, all mobs at any level get bonus stats from subjobs.
         // From lvl 45 onwards, 1/2. Before lvl 30, 1/4. In between, the value gets progresively higher, from 1/4 at 30 to 1/2 at 44.
@@ -459,6 +460,7 @@ namespace mobutils
             sVIT /= 4;
         }
 
+        // [stat] = [family Stat] + [main job Stat] + [sub job Stat]
         PMob->stats.STR = fSTR + mSTR + sSTR;
         PMob->stats.DEX = fDEX + mDEX + sDEX;
         PMob->stats.VIT = fVIT + mVIT + sVIT;
@@ -537,7 +539,8 @@ namespace mobutils
 
         // add traits for sub and main
         battleutils::AddTraits(PMob, traits::GetTraits(mJob), mLvl);
-        battleutils::AddTraits(PMob, traits::GetTraits(PMob->GetSJob()), PMob->GetSLevel());
+        // pass in bool param to stop from adding certain traits to mobs that should not be added
+        battleutils::AddTraits(PMob, traits::GetTraits(PMob->GetSJob()), PMob->GetSLevel(), true);
 
         // Max [HP/MP] Boost traits
         PMob->UpdateHealth();
@@ -754,14 +757,14 @@ namespace mobutils
 
     void SetupRoaming(CMobEntity* PMob)
     {
-        uint16 distance = 7;
+        uint16 distance = 10;
         uint16 turns    = 1;
         uint16 cool     = 20;
         uint16 rate     = 15;
 
         if (PMob->m_EcoSystem == ECOSYSTEM::BEASTMAN)
         {
-            distance = 10;
+            distance = 20;
             turns    = 3;
             cool     = 45;
         }
@@ -969,12 +972,15 @@ namespace mobutils
         RecalculateSpellContainer(PMob);
     }
 
+    void SetSkillList(CMobEntity* PMob, uint16 skillList)
+    {
+        PMob->m_MobSkillList = skillList;
+        PMob->setMobMod(MOBMOD_SKILL_LIST, PMob->m_MobSkillList);
+    }
+
     void InitializeMob(CMobEntity* PMob, CZone* PZone)
     {
         // add special mob mods
-
-        // this only has to be added once
-        AddCustomMods(PMob);
 
         PMob->m_Immunity |= PMob->getMobMod(MOBMOD_IMMUNITY);
 
@@ -1014,9 +1020,9 @@ namespace mobutils
                 PMob->addModifier(Mod::VERMIN_KILLER, 5);
                 break;
             case ECOSYSTEM::LUMINION:
-                PMob->addModifier(Mod::LUMORIAN_KILLER, 5);
+                PMob->addModifier(Mod::LUMINIAN_KILLER, 5);
                 break;
-            case ECOSYSTEM::LUMORIAN:
+            case ECOSYSTEM::LUMINIAN:
                 PMob->addModifier(Mod::LUMINION_KILLER, 5);
                 break;
             case ECOSYSTEM::PLANTOID:
@@ -1441,7 +1447,8 @@ Usage:
         mob_groups.allegiance, namevis, aggro, mob_pools.skill_list_id, mob_pools.true_detection, mob_family_system.detects, \
         mob_family_system.charmable, \
         mob_ele_evasion.fire_eem, mob_ele_evasion.ice_eem, mob_ele_evasion.wind_eem, mob_ele_evasion.earth_eem, \
-        mob_ele_evasion.lightning_eem, mob_ele_evasion.water_eem, mob_ele_evasion.light_eem, mob_ele_evasion.dark_eem \
+        mob_ele_evasion.lightning_eem, mob_ele_evasion.water_eem, mob_ele_evasion.light_eem, mob_ele_evasion.dark_eem, \
+        mob_pools.roamflag, mob_family_system.superFamilyID \
         FROM mob_groups \
         INNER JOIN mob_pools ON mob_groups.poolid = mob_pools.poolid \
         INNER JOIN mob_resistances ON mob_pools.resist_id = mob_resistances.resist_id \
@@ -1572,6 +1579,8 @@ Usage:
                 PMob->setMobMod(MOBMOD_DETECTION, sql->GetUIntData(69));
 
                 PMob->setMobMod(MOBMOD_CHARMABLE, sql->GetUIntData(70));
+                PMob->m_roamFlags   = sql->GetUIntData(79);
+                PMob->m_SuperFamily = sql->GetUIntData(80);
                 // Overwrite base family charmables depending on mob type. Disallowed mobs which should be charmable
                 // can be set in mob_spawn_mods or in their onInitialize
                 if (PMob->m_Type & MOBTYPE_EVENT || PMob->m_Type & MOBTYPE_FISHED || PMob->m_Type & MOBTYPE_BATTLEFIELD ||

@@ -27,7 +27,7 @@ CREATE TABLE `fishing_bait_affinity` (
   `fishid` smallint(5) unsigned NOT NULL DEFAULT '0',
   `power` smallint(5) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`baitid`,`fishid`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 AVG_ROW_LENGTH=28;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 AVG_ROW_LENGTH=28;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -105,8 +105,13 @@ INSERT INTO `fishing_bait_affinity` VALUES (16999,4307,3);
 INSERT INTO `fishing_bait_affinity` VALUES (16999,5462,3);
 INSERT INTO `fishing_bait_affinity` VALUES (16999,4354,2);
 INSERT INTO `fishing_bait_affinity` VALUES (16999,5458,2);
-INSERT INTO `fishing_bait_affinity` VALUES (16999,5330,10);
-INSERT INTO `fishing_bait_affinity` VALUES (16999,5329,10);
+INSERT INTO `fishing_bait_affinity` VALUES (16999,5330,10); -- Goldfish Scooping (Sunbreeze Festival)
+INSERT INTO `fishing_bait_affinity` VALUES (16999,5329,10); -- Goldfish Scooping (Sunbreeze Festival)
+INSERT INTO `fishing_bait_affinity` VALUES (17003,4310,10); -- Goldfish Scooping (Sunbreeze Festival)
+INSERT INTO `fishing_bait_affinity` VALUES (17003,4311,10); -- Goldfish Scooping (Sunbreeze Festival)
+INSERT INTO `fishing_bait_affinity` VALUES (17003,4312,10); -- Goldfish Scooping (Sunbreeze Festival)
+INSERT INTO `fishing_bait_affinity` VALUES (17003,5714,10); -- Goldfish Scooping (Sunbreeze Festival)
+INSERT INTO `fishing_bait_affinity` VALUES (17003,5715,10); -- Goldfish Scooping (Sunbreeze Festival)
 INSERT INTO `fishing_bait_affinity` VALUES (17006,5127,2);
 INSERT INTO `fishing_bait_affinity` VALUES (17006,5468,2);
 INSERT INTO `fishing_bait_affinity` VALUES (17006,4475,2);

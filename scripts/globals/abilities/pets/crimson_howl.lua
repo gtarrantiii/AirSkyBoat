@@ -2,8 +2,6 @@
 -- Crimson Howl
 -----------------------------------
 require("scripts/globals/mobskills")
-require("scripts/globals/settings")
-require("scripts/globals/status")
 require("scripts/globals/utils")
 require("scripts/globals/msg")
 -----------------------------------
@@ -15,6 +13,7 @@ end
 
 abilityObject.onPetAbility = function(target, pet, skill, summoner)
     local duration = math.min(30 + xi.summon.getSummoningSkillOverCap(pet), 180)
+
     target:addStatusEffect(xi.effect.WARCRY, 9, 0, duration)
     skill:setMsg(xi.msg.basic.SKILL_GAIN_EFFECT)
     return xi.effect.WARCRY

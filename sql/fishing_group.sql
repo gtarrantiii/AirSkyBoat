@@ -29,7 +29,7 @@ CREATE TABLE `fishing_group` (
   `pool_size` smallint(5) unsigned NOT NULL DEFAULT '0',
   `restock_rate` smallint(5) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`groupid`,`fishid`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1109,6 +1109,12 @@ INSERT INTO `fishing_group` VALUES (139,4469,900,190,6);
 INSERT INTO `fishing_group` VALUES (139,4472,1000,500,15);
 INSERT INTO `fishing_group` VALUES (139,5125,1000,500,15);
 INSERT INTO `fishing_group` VALUES (139,5126,1000,500,15);
+-- Sunbreeze Festival (Goldfish)
+INSERT INTO `fishing_group` VALUES (140,4310,1000,9999,9999);
+INSERT INTO `fishing_group` VALUES (140,4311,450,9999,9999);
+INSERT INTO `fishing_group` VALUES (140,4312,350,9999,9999);
+INSERT INTO `fishing_group` VALUES (140,5714,300,9999,9999);
+INSERT INTO `fishing_group` VALUES (140,5715,250,9999,9999);
 /*!40000 ALTER TABLE `fishing_group` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

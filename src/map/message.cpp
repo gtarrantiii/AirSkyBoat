@@ -25,6 +25,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include "message.h"
 
 #include "alliance.h"
+#include "conquest_system.h"
 #include "linkshell.h"
 #include "party.h"
 #include "status_effect_container.h"
@@ -109,8 +110,8 @@ namespace message
             }
             case MSG_CHAT_TELL:
             {
-                char characterName[15] = {};
-                memcpy(&characterName, reinterpret_cast<char*>(extra.data()) + 4, sizeof(characterName));
+                char characterName[PacketNameLength] = {};
+                memcpy(&characterName, reinterpret_cast<char*>(extra.data()) + 4, PacketNameLength - 1);
 
                 CCharEntity* PChar = zoneutils::GetCharByName(characterName);
                 if (PChar && PChar->status != STATUS_TYPE::DISAPPEAR && !jailutils::InPrison(PChar))
@@ -394,16 +395,16 @@ namespace message
 
                 if (PLinkshell)
                 {
-                    char memberName[15] = {};
-                    memcpy(&memberName, reinterpret_cast<char*>(extra.data()) + 4, sizeof(memberName));
+                    char memberName[PacketNameLength] = {};
+                    memcpy(&memberName, reinterpret_cast<char*>(extra.data()) + 4, PacketNameLength - 1);
                     PLinkshell->ChangeMemberRank(memberName, ref<uint8>((uint8*)extra.data(), 28));
                 }
                 break;
             }
             case MSG_LINKSHELL_REMOVE:
             {
-                char memberName[15] = {};
-                memcpy(&memberName, reinterpret_cast<char*>(extra.data()) + 4, sizeof(memberName));
+                char memberName[PacketNameLength] = {};
+                memcpy(&memberName, reinterpret_cast<char*>(extra.data()) + 4, PacketNameLength - 1);
                 CCharEntity* PChar = zoneutils::GetCharByName(memberName);
 
                 if (PChar && PChar->PLinkshell1 && PChar->PLinkshell1->getID() == ref<uint32>((uint8*)extra.data(), 24))
@@ -463,18 +464,29 @@ namespace message
 
                     PChar->m_moghouseID = 0;
 
-                    PChar->loc.p.x         = x;
-                    PChar->loc.p.y         = y;
-                    PChar->loc.p.z         = z;
-                    PChar->loc.p.rotation  = rot;
-                    PChar->loc.destination = zoneId;
-                    PChar->m_moghouseID    = moghouseID;
-                    PChar->loc.boundary    = 0;
-                    PChar->status          = STATUS_TYPE::DISAPPEAR;
-                    PChar->animation       = ANIMATION_NONE;
-                    PChar->clearPacketList();
+                    auto ipp = zoneutils::GetZoneIPP(zoneId);
 
-                    charutils::SendToZone(PChar, 2, zoneutils::GetZoneIPP(zoneId));
+                    if (ipp == 0)
+                    {
+                        ipp = zoneutils::GetZoneIPP(PChar->loc.zone->GetID());
+                        PChar->loc.p.rotation += 128;
+                        ShowDebug("message::parse(MSG_SEND_TO_ZONE): %s bad zone requested, sending back to original zone.", PChar->name);
+                    }
+                    else
+                    {
+                        PChar->loc.p.x         = x;
+                        PChar->loc.p.y         = y;
+                        PChar->loc.p.z         = z;
+                        PChar->loc.p.rotation  = rot;
+                        PChar->loc.destination = zoneId;
+                        PChar->m_moghouseID    = moghouseID;
+                        PChar->loc.boundary    = 0;
+                        PChar->status          = STATUS_TYPE::DISAPPEAR;
+                        PChar->animation       = ANIMATION_NONE;
+                        PChar->clearPacketList();
+                    }
+
+                    charutils::SendToZone(PChar, 2, ipp);
                 }
                 break;
             }
@@ -652,6 +664,46 @@ namespace message
                         ShowError("message::parse::MSG_RPC_RECV: %s", err.what());
                     }
                     replyMap.erase(slotKey);
+                }
+
+                break;
+            }
+            case MSG_WORLD2MAP_REGIONAL_EVENT:
+            {
+                // Extract data
+                uint8* data      = (uint8*)extra.data();
+                uint8  eventType = ref<uint8>(data, 0);
+                // uint8  subtype   = ref<uint8>(data, 1);
+
+                // Handle each event type and subtype.
+                switch (eventType)
+                {
+                    case REGIONAL_EVT_MSG_CONQUEST:
+                    {
+                        conquest::HandleZMQMessage(data);
+                        break;
+                    }
+                    /*
+                    case REGIONAL_EVT_MSG_BESIEGED:
+                    {
+                        // TODO: Handle besieged message
+                        break;
+                    }
+                    case REGIONAL_EVT_MSG_CAMPAIGN:
+                    {
+                        // TODO: Handle besieged message
+                        break;
+                    }
+                    case REGIONAL_EVT_MSG_COLONIZATION:
+                    {
+                        // TODO: Handle besieged message
+                        break;
+                    }
+                    */
+                    default:
+                    {
+                        ShowWarning("Message: unhandled regional event type %d", eventType);
+                    }
                 }
 
                 break;

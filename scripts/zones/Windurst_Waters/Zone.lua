@@ -4,6 +4,7 @@
 local ID = require('scripts/zones/Windurst_Waters/IDs')
 require('scripts/globals/events/harvest_festivals')
 require('scripts/globals/events/starlight_celebrations')
+require('scripts/globals/events/sunbreeze_festival')
 require('scripts/globals/conquest')
 require('scripts/globals/cutscenes')
 require('scripts/globals/settings')
@@ -33,8 +34,12 @@ zoneObject.onZoneIn = function(player, prevZone)
     xi.moghouse.exitJobChange(player, prevZone)
 end
 
-zoneObject.onConquestUpdate = function(zone, updatetype)
-    xi.conq.onConquestUpdate(zone, updatetype)
+zoneObject.afterZoneIn = function(player)
+    xi.moghouse.afterZoneIn(player)
+end
+
+zoneObject.onConquestUpdate = function(zone, updatetype, influence, owner, ranking, isConquestAlliance)
+    xi.conq.onConquestUpdate(zone, updatetype, influence, owner, ranking, isConquestAlliance)
 end
 
 zoneObject.onTriggerAreaEnter = function(player, triggerArea)
@@ -45,6 +50,10 @@ end
 
 zoneObject.onEventFinish = function(player, csid, option)
     xi.moghouse.exitJobChangeFinish(player, csid, option)
+end
+
+zoneObject.onGameHour = function(zone)
+    xi.events.sunbreeze_festival.spawnFireworks(zone)
 end
 
 return zoneObject

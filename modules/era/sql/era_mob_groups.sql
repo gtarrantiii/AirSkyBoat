@@ -954,6 +954,7 @@ UPDATE mob_groups SET minLevel = 52, maxLevel = 58 WHERE name = "Bloodsucker_fis
 -- Toraimarai_Canal (Zone 169)
 -- ------------------------------------------------------------
 
+UPDATE mob_groups SET content_tag='WOTG' WHERE name='Brazen_Bones' AND groupid='40' AND zoneid='169';
 UPDATE mob_groups SET content_tag='ABYSSEA' WHERE name='Blackwater_Pugil' AND groupid='24' AND zoneid='169';
 UPDATE mob_groups SET content_tag='ABYSSEA' WHERE name='Plunderer_Crab' AND groupid='25' AND zoneid='169';
 UPDATE mob_groups SET content_tag='ABYSSEA' WHERE name='Deviling_Bats' AND groupid='28' AND zoneid='169';
@@ -1135,6 +1136,7 @@ UPDATE mob_groups SET content_tag='WOTG' WHERE name='Ah_Puch' AND groupid='13' A
 UPDATE mob_groups SET content_tag='ABYSSEA' WHERE name='Hellbound_Warrior' AND groupid='15' AND zoneid='195';
 UPDATE mob_groups SET content_tag='ABYSSEA' WHERE name='Hellbound_Warlock' AND groupid='16' AND zoneid='195';
 UPDATE mob_groups SET content_tag='ABYSSEA' WHERE name='Nekros_Hound' AND groupid='32' AND zoneid='195';
+UPDATE mob_groups SET content_tag='COP' WHERE name='Namorodo' AND groupid='56' AND zoneid='195';
 
 -- ------------------------------------------------------------
 -- Gusgen_Mines (Zone 196)

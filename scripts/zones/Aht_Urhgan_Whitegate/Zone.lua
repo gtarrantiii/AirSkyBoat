@@ -19,6 +19,8 @@ zoneObject.onInitialize = function(zone)
     zone:registerTriggerArea(7,   69,  0.0,    7,   73,  0.0,   11) -- Sets Mark for "Led Astry" Quest cutscene.
     zone:registerTriggerArea(8,   10,  2.0,  -96,   14,  2.0,  -92) -- Sets Mark for "Led Astry" Quest cutscene.
     zone:registerTriggerArea(9, -103,  0.0,  -16, -100,  0.0,  -12) -- Sets Mark for "Striking a Balance" Quest cutscene.
+    zone:registerTriggerArea(10,  22,   2,  -98,     0,    0,    0) -- Sets Mark for "The Prankster" Quest cutscene.
+    zone:registerTriggerArea(11,  27,   7, -123,     0,    0,    0) -- Sets Mark for "The Prankster" Quest cutscene.
 end
 
 zoneObject.onZoneIn = function(player, prevZone)
@@ -102,6 +104,7 @@ zoneObject.onEventFinish = function(player, csid, option)
     elseif csid == 201 then
         player:setPos(-11, 2, -142, 192)
     elseif csid == 203 then
+        player:setCharVar('[Moghouse]Exit_Job_Change', 0)
         player:setPos(0, -2, 0, 0, 58)
     elseif csid == 204 then
         player:setPos(11, 2, 142, 64)
@@ -109,11 +112,11 @@ zoneObject.onEventFinish = function(player, csid, option)
         player:setCharVar("gotitallCS", 6)
         player:setPos(60, 0, -71, 38)
     elseif csid == 797 then
-        player:setCharVar("AgainstAllOdds", 1) -- Set For Corsair BCNM
+        player:setCharVar("Quest[6][26]Prog", 1) -- Set For Corsair BCNM
         player:addQuest(xi.quest.log_id.AHT_URHGAN, xi.quest.id.ahtUrhgan.AGAINST_ALL_ODDS) -- Start of af 3 not completed yet
         player:addKeyItem(xi.ki.LIFE_FLOAT) -- BCNM KEY ITEM TO ENTER BCNM
         player:messageSpecial(ID.text.KEYITEM_OBTAINED, xi.ki.LIFE_FLOAT)
-        player:setCharVar("AgainstAllOddsTimer", getMidnight())
+        player:setCharVar("Quest[6][26]Timer", getMidnight())
     end
 
     xi.moghouse.exitJobChangeFinish(player, csid, option)

@@ -4,8 +4,6 @@
 require('scripts/globals/items')
 require("scripts/globals/msg")
 require("scripts/globals/quests")
-require("scripts/globals/settings")
-require("scripts/globals/status")
 require("scripts/globals/utils")
 -----------------------------------
 xi = xi or {}
@@ -249,6 +247,10 @@ end
 
 xi.job_utils.thief.useFlee = function(player, target, ability)
     local duration = 30 + player:getMod(xi.mod.FLEE_DURATION)
+
+    if player:hasStatusEffect(xi.effect.WEIGHT) then
+        player:delStatusEffect(xi.effect.WEIGHT)
+    end
 
     player:addStatusEffect(xi.effect.FLEE, 100, 0, duration)
 end
