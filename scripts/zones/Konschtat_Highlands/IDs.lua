@@ -31,12 +31,38 @@ zones[xi.zone.KONSCHTAT_HIGHLANDS] =
         SIGNPOST_DIALOG_1             = 7396,  -- North: Valkurm Dunes South: To Gustaberg
         SIGNPOST_DIALOG_2             = 7397,  -- You see something stuck behind the signpost.
         SOMETHING_BURIED_HERE         = 7398,  -- Something has been buried here.
-        BLACKENED_SPOT_ON_GROUND      = 7458,  -- There is a blackened spot on the ground...
-        BLACKENED_SHOULD_PLACE        = 7459,  -- This is the blackened spot you were told about. You should place <item> here.
-        PLACE_BLACKENED_SPOT          = 7460,  -- You place <item> on the blackened spot.
-        BLACKENED_NOTHING_HAPPENS     = 7461,  -- You place <item> on the blackened spot, but nothing happens.
-        BLACKENED_MUST_BE_CLOSER      = 7462,  -- You have to be closer to place anything on the blackened spot.
-        NOT_THE_TIME_FOR_THAT         = 7471,  -- This is not the time for that!
+		BLACKENED_SPOT_ON_GROUND      = 7446,  -- There is a blackened spot on the ground...
+		BLACKENED_SHOULD_PLACE        = 7447,  -- This is the blackened spot you were told about. You should place <item> here.
+        PLACE_BLACKENED_SPOT          = 7448,  -- You place <item> on the blackened spot.
+        BLACKENED_NOTHING_HAPPENS     = 7449,  -- You place <item> on the blackened spot, but nothing happens.
+        BLACKENED_MUST_BE_CLOSER      = 7450,  -- You have to be closer to place anything on the blackened spot.
+		NOT_THE_TIME_FOR_THAT         = 7459,  -- This is not the time for that!
+        GOBLIN_ARCHAEOLOGIST_1        = 7460,  -- Gimme everything ya got in your bag - standard message clicking on ???
+        GOBLIN_ARCHAEOLOGIST_2        = 7461,  -- Your offering is refused - rare/ex or item(s) with no sale value
+        GOBLIN_ARCHAEOLOGIST_3        = 7462,  -- Leave ya bag and scram - (pop message)
+        GOBLIN_ARCHAEOLOGIST_4        = 7463,  -- You hear a voice from right beneath the surface of the ground.
+        GOBLIN_ARCHAEOLOGIST_5        = 7464,  -- You hear a voice coming from somewhere extremely close to the surface of the ground...
+        GOBLIN_ARCHAEOLOGIST_6        = 7465,  -- You hear a voice coming from somewhere very close to the surface of the ground...
+        GOBLIN_ARCHAEOLOGIST_7        = 7466,  -- You hear a voice coming from somewhere close to the surface of the ground...
+        GOBLIN_ARCHAEOLOGIST_8        = 7467,  -- You hear a voice from under the ground...
+        GOBLIN_ARCHAEOLOGIST_9        = 7468,  -- You hear a voice coming from somewhere deep under the ground...
+        GOBLIN_ARCHAEOLOGIST_10       = 7469,  -- You hear a voice coming from somewhere very deep under the ground...
+        GOBLIN_ARCHAEOLOGIST_11       = 7470,  -- You hear a voice coming from somewhere extremely deep under the ground...
+        GOBLIN_ARCHAEOLOGIST_12       = 7471,  -- Gimme more!!!!!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_13       = 7472,  -- Gimme more!!!!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_14       = 7473,  -- Gimme more!!!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_15       = 7474,  -- Gimme more!!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_16       = 7475,  -- Gimme more!!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_17       = 7476,  -- Gimme more!!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_18       = 7477,  -- Gimme more!!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_19       = 7478,  -- Gimme more!!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_20       = 7479,  -- Gimme more!!!!!!!
+        GOBLIN_ARCHAEOLOGIST_21       = 7480,  -- Gimme more!!!!!!
+        GOBLIN_ARCHAEOLOGIST_22       = 7481,  -- Gimme more!!!!!
+        GOBLIN_ARCHAEOLOGIST_23       = 7482,  -- Gimme more!!!!
+        GOBLIN_ARCHAEOLOGIST_24       = 7483,  -- Gimme more!!!
+        GOBLIN_ARCHAEOLOGIST_25       = 7484,  -- Gimme more!!
+        GOBLIN_ARCHAEOLOGIST_26       = 7485,  -- Gimme more!		
         TELEPOINT_HAS_BEEN_SHATTERED  = 7498,  -- The telepoint has been shattered into a thousand pieces...
         MEMORIES_SEALED_OFF           = 7611,  -- A portion of your memories has been sealed off.
         PLAYER_OBTAINS_ITEM           = 7616,  -- <name> obtains <item>!
@@ -87,7 +113,7 @@ zones[xi.zone.KONSCHTAT_HIGHLANDS] =
         BENDIGEIT_VRAN    = 17220001,
         GHILLIE_DHU       = 17219619,
         HIGHLANDER_LIZARD = 17219787,
-
+		GOBLIN_ARCHAEOLOGIST = 17219998,
         VOIDWALKER =
         {
             [xi.keyItem.CLEAR_ABYSSITE] =
@@ -122,6 +148,7 @@ zones[xi.zone.KONSCHTAT_HIGHLANDS] =
 
     npc =
     {
+		GOBLIN_ARCHAEOLOGIST_QM = 17220158,
     },
 }
 
