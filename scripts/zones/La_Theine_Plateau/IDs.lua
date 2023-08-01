@@ -112,7 +112,7 @@ zones[xi.zone.LA_THEINE_PLATEAU] =
         },
 
         NIHNIKNOOVI = 17195475,
-        GOBLINARCHAEOLOGIST = 17195474,
+        GOBLIN_ARCHAEOLOGIST = 17195474,
         VOIDWALKER =
         {
             [xi.keyItem.CLEAR_ABYSSITE] =
