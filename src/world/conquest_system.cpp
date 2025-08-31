@@ -28,49 +28,55 @@ ConquestSystem::ConquestSystem()
 {
 }
 
-bool ConquestSystem::handleMessage(std::vector<uint8> payload,
-                                   in_addr            from_addr,
-                                   uint16             from_port)
+bool ConquestSystem::handleMessage(HandleableMessage&& message)
 {
-    const uint8 conquestMsgType = payload[1];
-    if (conquestMsgType == CONQUESTMSGTYPE::CONQUEST_MAP2WORLD_GM_WEEKLY_UPDATE)
+    const uint8 conquestMsgType = message.payload[1];
+    switch (conquestMsgType)
     {
-        updateWeekConquest();
-        return true;
+        case CONQUESTMSGTYPE::CONQUEST_MAP2WORLD_GM_WEEKLY_UPDATE:
+        {
+            updateWeekConquest();
+            return true;
+        }
+        break;
+        case CONQUESTMSGTYPE::CONQUEST_MAP2WORLD_ADD_INFLUENCE_POINTS:
+        {
+            // const int32  points = ref<int32>(data, 2);
+            int32  points = 0;
+            uint32 nation = 0;
+            uint8  region = 0;
+            std::memcpy(&points, message.payload.data() + 2, sizeof(int32));
+            std::memcpy(&nation, message.payload.data() + 6, sizeof(uint32));
+            std::memcpy(&region, message.payload.data() + 10, sizeof(uint8));
+
+            // We update influence but do not immediately send this update to all map servers
+            // Influence updates are sent periodically via time_server instead.
+            // It is okay for map servers to be eventually consistent.
+            updateInfluencePoints(points, nation, (REGION_TYPE)region);
+            return true;
+        }
+        break;
+        case CONQUESTMSGTYPE::CONQUEST_MAP2WORLD_GM_CONQUEST_UPDATE:
+        {
+            // Convert from_addr to ip + port
+            uint64 ipp = message.from_addr.s_addr;
+            ipp |= (((uint64)message.from_port) << 32);
+
+            // Send influence data to the requesting map server
+            sendInfluencesMsg(true, ipp);
+            return true;
+        }
+        break;
+        default:
+        {
+            ShowDebug(fmt::format("Message: unknown conquest type received: {} from {}:{}",
+                                  static_cast<uint8>(conquestMsgType),
+                                  message.from_addr.s_addr,
+                                  message.from_port));
+        }
+        break;
     }
 
-    if (conquestMsgType == CONQUESTMSGTYPE::CONQUEST_MAP2WORLD_ADD_INFLUENCE_POINTS)
-    {
-        // const int32  points = ref<int32>(data, 2);
-        int32  points = 0;
-        uint32 nation = 0;
-        uint8  region = 0;
-        std::memcpy(&points, payload.data() + 2, sizeof(int32));
-        std::memcpy(&nation, payload.data() + 6, sizeof(uint32));
-        std::memcpy(&region, payload.data() + 10, sizeof(uint8));
-
-        // We update influence but do not immediately send this update to all map servers
-        // Influence updates are sent periodically via time_server instead.
-        // It is okay for map servers to be eventually consistent.
-        updateInfluencePoints(points, nation, (REGION_TYPE)region);
-        return true;
-    }
-
-    if (conquestMsgType == CONQUESTMSGTYPE::CONQUEST_MAP2WORLD_GM_CONQUEST_UPDATE)
-    {
-        // Convert from_addr to ip + port
-        uint64 ipp = from_addr.s_addr;
-        ipp |= (((uint64)from_port) << 32);
-
-        // Send influence data to the requesting map server
-        sendInfluencesMsg(true, ipp);
-        return true;
-    }
-
-    ShowDebug(fmt::format("Message: unknown conquest type received: {} from {}:{}",
-                          static_cast<uint8>(conquestMsgType),
-                          from_addr.s_addr,
-                          from_port));
     return false;
 }
 
@@ -80,14 +86,12 @@ void ConquestSystem::sendTallyStartMsg()
     const std::size_t dataLen = 2 * sizeof(uint8);
     uint8             data[2 * sizeof(uint8) + sizeof(uint32)]{};
 
-    // Create ZMQ message with header and no other payload
+    // Create payload with header and no other data
     ref<uint8>((uint8*)data, 0) = REGIONAL_EVT_MSG_CONQUEST;
     ref<uint8>((uint8*)data, 1) = CONQUEST_WORLD2MAP_WEEKLY_UPDATE_START;
 
     // Send to map
-    zmq::message_t dataMsg = zmq::message_t(dataLen);
-    memcpy(dataMsg.data(), data, dataLen);
-    queue_message_broadcast(MSG_WORLD2MAP_REGIONAL_EVENT, &dataMsg);
+    queue_data_broadcast(MSG_WORLD2MAP_REGIONAL_EVENT, data, dataLen);
 }
 
 void ConquestSystem::sendInfluencesMsg(bool shouldUpdateZones, uint64 ipp)
@@ -95,8 +99,8 @@ void ConquestSystem::sendInfluencesMsg(bool shouldUpdateZones, uint64 ipp)
     auto influences = getRegionalInfluences();
 
     // Base length is the type + subtype + influence size
-    const std::size_t headerLength = 2 * sizeof(uint8);
-    const std::size_t dataLen      = headerLength + sizeof(bool) + sizeof(size_t) + sizeof(influence_t) * influences.size();
+    const std::size_t headerLength = 2 * sizeof(uint8) + sizeof(std::size_t) + sizeof(bool);
+    const std::size_t dataLen      = headerLength + sizeof(influence_t) * influences.size();
     const uint8*      data         = new uint8[dataLen];
 
     // Regional event type + conquest msg type
@@ -109,23 +113,21 @@ void ConquestSystem::sendInfluencesMsg(bool shouldUpdateZones, uint64 ipp)
     for (std::size_t i = 0; i < influences.size(); i++)
     {
         // Everything is offset by i*size of region control struct + headerLength
-        const std::size_t start              = headerLength + sizeof(bool) + sizeof(size_t) + i * sizeof(influence_t);
+        const std::size_t start              = headerLength + i * sizeof(influence_t);
         ref<uint16>((uint8*)data, start)     = influences[i].sandoria_influence;
         ref<uint16>((uint8*)data, start + 2) = influences[i].bastok_influence;
         ref<uint16>((uint8*)data, start + 4) = influences[i].windurst_influence;
         ref<uint16>((uint8*)data, start + 6) = influences[i].beastmen_influence;
     }
 
-    // 3- Create ZMQ Message and queue it
-    zmq::message_t dataMsg = zmq::message_t(dataLen);
-    memcpy(dataMsg.data(), data, dataLen);
+    // 3- Queue payload to be sent to map servers
     if (ipp == 0xFFFF)
     {
-        queue_message_broadcast(MSG_WORLD2MAP_REGIONAL_EVENT, &dataMsg);
+        queue_data_broadcast(MSG_WORLD2MAP_REGIONAL_EVENT, data, dataLen);
     }
     else
     {
-        queue_message(ipp, MSG_WORLD2MAP_REGIONAL_EVENT, &dataMsg);
+        queue_data(ipp, MSG_WORLD2MAP_REGIONAL_EVENT, data, dataLen);
     }
 }
 
@@ -140,8 +142,8 @@ void ConquestSystem::sendRegionControlsMsg(CONQUESTMSGTYPE msgType, uint64 ipp)
     //      - prev control (uint8)
     auto regionControls = getRegionControls();
 
-    // Base length is the type + subtype + region control size
-    const std::size_t headerLength = 2 * sizeof(uint8);
+    // Header length is the type + subtype + region control size + size of the size_t
+    const std::size_t headerLength = 2 * sizeof(uint8) + sizeof(std::size_t);
     const std::size_t dataLen      = headerLength + sizeof(region_control_t) * regionControls.size();
     const uint8*      data         = new uint8[dataLen];
 
@@ -153,23 +155,20 @@ void ConquestSystem::sendRegionControlsMsg(CONQUESTMSGTYPE msgType, uint64 ipp)
     ref<std::size_t>((uint8*)data, 2) = regionControls.size();
     for (std::size_t i = 0; i < regionControls.size(); i++)
     {
-        // Everything is offset by i*size of region control struct + headerLength + size of size_t
-        const std::size_t offset             = headerLength + sizeof(size_t) + sizeof(region_control_t) * i;
+        // Everything is offset by i*size of region control struct + headerLength
+        const std::size_t offset             = headerLength + sizeof(region_control_t) * i;
         ref<uint8>((uint8*)data, offset)     = regionControls[i].current;
         ref<uint8>((uint8*)data, offset + 1) = regionControls[i].prev;
     }
 
-    // 3- Create ZMQ Message and queue it
-    zmq::message_t dataMsg = zmq::message_t(dataLen);
-    memcpy(dataMsg.data(), data, dataLen);
-
+    // 3- Queue payload to be sent to map servers
     if (ipp == 0xFFFF)
     {
-        queue_message_broadcast(MSG_WORLD2MAP_REGIONAL_EVENT, &dataMsg);
+        queue_data_broadcast(MSG_WORLD2MAP_REGIONAL_EVENT, data, dataLen);
     }
     else
     {
-        queue_message(ipp, MSG_WORLD2MAP_REGIONAL_EVENT, &dataMsg);
+        queue_data(ipp, MSG_WORLD2MAP_REGIONAL_EVENT, data, dataLen);
     }
 }
 

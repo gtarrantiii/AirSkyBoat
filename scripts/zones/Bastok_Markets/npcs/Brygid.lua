@@ -6,11 +6,7 @@
 -- !pos -90 -4 -108 235
 -----------------------------------
 local ID = require("scripts/zones/Bastok_Markets/IDs")
-require("scripts/globals/settings")
-require('scripts/globals/items')
-require("scripts/globals/keyitems")
 require("scripts/globals/equipment")
-require("scripts/globals/status")
 require("scripts/globals/titles")
 require("scripts/globals/quests")
 -----------------------------------
@@ -125,7 +121,11 @@ entity.onEventFinish = function(player, csid, option)
         player:delQuest(xi.quest.log_id.BASTOK, xi.quest.id.bastok.BRYGID_THE_STYLIST_RETURNS)
         player:addQuest(xi.quest.log_id.BASTOK, xi.quest.id.bastok.BRYGID_THE_STYLIST_RETURNS)
 
-    elseif csid == 382 and option ~= 99 then
+    elseif
+        csid == 382 and
+        option <= 13 and
+        option > 0
+    then
         player:setCharVar("BrygidWantsSubligar", option)
 
     elseif csid == 383 then

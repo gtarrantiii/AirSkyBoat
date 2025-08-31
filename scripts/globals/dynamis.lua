@@ -2,13 +2,11 @@
 -- Dynamis
 -----------------------------------
 require("scripts/globals/battlefield")
-require("scripts/globals/keyitems")
 require("scripts/globals/missions")
 require("scripts/globals/npc_util")
 require("scripts/globals/titles")
 require("scripts/globals/utils")
 require("scripts/globals/zone")
-require("scripts/globals/msg")
 -----------------------------------
 xi = xi or {}
 xi.dynamis = xi.dynamis or {}
@@ -327,9 +325,10 @@ xi.dynamis.entryNpcOnTrigger = function(player, npc)
     local info          = entryInfo[zoneId]
     local ID            = zones[zoneId]
     local dynaMask      = player:getCharVar("Dynamis_Status")
+    printf("dynaMask %s", dynaMask)
     local unlockingDyna = utils.mask.getBit(dynaMask, 0)
     local tavnaziaFirst = false
-
+    printf("info.reqs(player) %s", info.reqs(player))
     -- Tavnazia is unique;  plays the first time cs directly on trigger without message or transporting
     if
         info.csBit == 10 and

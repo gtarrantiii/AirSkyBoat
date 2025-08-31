@@ -41,11 +41,12 @@ enum ENTITYTYPE : uint8
     TYPE_TRUST  = 0x20,
     TYPE_FELLOW = 0x40,
 };
+DECLARE_FORMAT_AS_UNDERLYING(ENTITYTYPE);
 
 enum class STATUS_TYPE : uint8
 {
     NORMAL        = 0,
-    MOB           = 1,
+    UPDATE        = 1,
     DISAPPEAR     = 2,
     INVISIBLE     = 3,
     STATUS_4      = 4,
@@ -53,6 +54,7 @@ enum class STATUS_TYPE : uint8
     STATUS_18     = 18,
     SHUTDOWN      = 20,
 };
+DECLARE_FORMAT_AS_UNDERLYING(STATUS_TYPE);
 
 enum ANIMATIONTYPE : uint8
 {

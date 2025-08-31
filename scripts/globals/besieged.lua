@@ -3,12 +3,8 @@
 --     Functions for Besieged system
 --
 -----------------------------------
-require('scripts/globals/keyitems')
 require('scripts/globals/npc_util')
-require('scripts/globals/status')
 require('scripts/globals/teleports')
-require('scripts/globals/settings')
-require('scripts/globals/items')
 require('scripts/globals/extravaganza')
 -----------------------------------
 
@@ -168,7 +164,10 @@ end
 
 xi.besieged.onEventFinish = function(player, csid, option)
     local ID = zones[player:getZoneID()]
-    if option == 0 or option == 16 or option == 32 or option == 48 then
+    if
+        (option == 0 or option == 16 or option == 32 or option == 48) and
+        player:hasCompletedMission(xi.mission.log_id.TOAU, 1)
+    then
         -- Sanction
         if option ~= 0 then
             player:delCurrency("imperial_standing", 100)

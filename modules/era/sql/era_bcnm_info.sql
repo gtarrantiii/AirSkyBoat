@@ -3,12 +3,16 @@
 -- Replace BCNM data where required
 -- --------------------------------------------------------
 
-LOCK TABLES `bcnm_info` WRITE, 
+LOCK TABLES `bcnm_info` WRITE,
     `bcnm_battlefield` WRITE,
     `mob_pools` WRITE;
 
 -- Update the header info for the BCNMs
 UPDATE `bcnm_info` SET `levelCap`=40 WHERE `bcnmId`=737; -- Changed to level 40 cap
+
+-- Update so players do not lose exp from death in ENMs 
+UPDATE `bcnm_info` SET `rules`=13 WHERE `zoneId` IN (6, 8, 10, 13, 17, 19, 21, 23, 31) AND `rules`=15;
+UPDATE `bcnm_info` SET `rules`=12 WHERE `zoneId` IN (6, 8, 10, 13, 17, 19, 21, 23, 31) AND `rules`=14;
 
 -- Update BCNM Mob data
 DELETE FROM `bcnm_battlefield` WHERE `bcnmid`=737;
@@ -22,7 +26,7 @@ INSERT INTO `bcnm_battlefield` VALUES
     (737, 1, 16830482, 1), -- Moblin Clergyman
     (737, 1, 16830484, 1),
     (737, 1, 16830486, 1),
-    
+
     (737, 2, 16830487, 3),
     (737, 2, 16830488, 1),
     (737, 2, 16830490, 1),

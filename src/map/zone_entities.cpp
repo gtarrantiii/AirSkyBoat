@@ -468,6 +468,12 @@ void CZoneEntities::DecreaseZoneCounter(CCharEntity* PChar)
     m_charList.erase(PChar->targid);
     charTargIds.erase(PChar->targid);
 
+    // Need to interupt fishing on zone out otherwise fished up mobs get stuck in hooked state
+    if (PChar->hookedFish && PChar->hookedFish->hooked == true)
+    {
+        fishingutils::InterruptFishing(PChar);
+    }
+
     ShowDebug("CZone:: %s DecreaseZoneCounter <%u> %s", m_zone->GetName(), m_charList.size(), PChar->GetName());
 }
 
@@ -601,7 +607,7 @@ void CZoneEntities::SpawnPETs(CCharEntity* PChar)
         SpawnIDList_t::iterator PET         = PChar->SpawnPETList.find(PCurrentPet->id);
 
         // Is this pet "visible" to the player?
-        if ((PCurrentPet->status == STATUS_TYPE::NORMAL || PCurrentPet->status == STATUS_TYPE::MOB) && distance(PChar->loc.p, PCurrentPet->loc.p) <= 50)
+        if ((PCurrentPet->status == STATUS_TYPE::NORMAL || PCurrentPet->status == STATUS_TYPE::UPDATE) && distance(PChar->loc.p, PCurrentPet->loc.p) <= 50)
         {
             // pet not in update list for player, add it in
             if (PET == PChar->SpawnPETList.end())
@@ -629,7 +635,7 @@ void CZoneEntities::SpawnNPCs(CCharEntity* PChar)
             CNpcEntity*             PCurrentNpc = (CNpcEntity*)it->second;
             SpawnIDList_t::iterator NPC         = PChar->SpawnNPCList.find(PCurrentNpc->id);
 
-            if (PCurrentNpc->status == STATUS_TYPE::NORMAL || PCurrentNpc->status == STATUS_TYPE::MOB)
+            if (PCurrentNpc->status == STATUS_TYPE::NORMAL || PCurrentNpc->status == STATUS_TYPE::UPDATE)
             {
                 // Is this npc "visible" to the player?
                 if (distance(PChar->loc.p, PCurrentNpc->loc.p) <= NPC_DESPAWN_DISTANCE || PCurrentNpc->m_alwaysRender)
@@ -724,7 +730,19 @@ void CZoneEntities::SpawnPCs(CCharEntity* PChar)
 
     for (auto mobEntry : PChar->SpawnMOBList)
     {
-        CState* state = mobEntry.second->PAI->GetCurrentState();
+        auto* PMob = mobEntry.second;
+        if (PMob == nullptr)
+        {
+            // clang-format off
+            auto targId       = mobEntry.first - 0x1000000 - (m_zone->GetID() << 12);
+            auto isDynamicStr = targId >= 0x700 ? "Dynamic" : "Static";
+            ShowError(fmt::format("Empty {} Mob entry (targId: {}) found in {}'s SpawnMOBList in {}! This indicates an improperly cleaned-up Mob object! This is dangerous!",
+                                  isDynamicStr, targId, PChar->name, m_zone->GetName()).c_str());
+            // clang-format on
+            continue;
+        }
+
+        CState* state = PMob->PAI->GetCurrentState();
         if (!state)
         {
             continue;
@@ -891,6 +909,13 @@ void CZoneEntities::SpawnPCs(CCharEntity* PChar)
 void CZoneEntities::SpawnMoogle(CCharEntity* PChar)
 {
     TracyZoneScoped;
+
+    // If on Moghouse2F; don't spawn the Moogle
+    if (PChar->profile.mhflag & 0x40)
+    {
+        return;
+    }
+
     for (EntityList_t::const_iterator it = m_npcList.begin(); it != m_npcList.end(); ++it)
     {
         CNpcEntity* PCurrentNpc = (CNpcEntity*)it->second;
@@ -1297,42 +1322,34 @@ void CZoneEntities::PushPacket(CBaseEntity* PEntity, GLOBAL_MESSAGE_TYPE message
 
                                 CBaseEntity* entity = GetEntity(targid);
 
-                                SpawnIDList_t spawnlist;
+                                auto pushPacketIfInSpawnList = [&](CCharEntity* PChar, SpawnIDList_t const& spawnlist)
+                                {
+                                    SpawnIDList_t::const_iterator iter = spawnlist.lower_bound(id);
+                                    if (!(iter == spawnlist.end() || spawnlist.key_comp()(id, iter->first)))
+                                    {
+                                        PCurrentChar->pushPacket(new CBasicPacket(*packet));
+                                    }
+                                };
 
-                                if (entity)
+                                switch(entity->objtype)
                                 {
-                                    if (entity->objtype == TYPE_MOB)
-                                    {
-                                        spawnlist = PCurrentChar->SpawnMOBList;
-                                    }
-                                    else if (entity->objtype == TYPE_NPC)
-                                    {
-                                        spawnlist = PCurrentChar->SpawnNPCList;
-                                    }
-                                    else if (entity->objtype == TYPE_PET)
-                                    {
-                                        spawnlist = PCurrentChar->SpawnPETList;
-                                    }
-                                    else if (entity->objtype == TYPE_TRUST)
-                                    {
-                                        spawnlist = PCurrentChar->SpawnTRUSTList;
-                                    }
-                                    else
-                                    {
-                                        entity = nullptr;
-                                    }
-                                }
-                                if (!entity)
-                                {
-                                    // got a char or nothing as the target of this entity update (which really shouldn't happen ever)
-                                    // so we're just going to skip this packet
-                                    break;
-                                }
-                                SpawnIDList_t::iterator iter = spawnlist.lower_bound(id);
-
-                                if (!(iter == spawnlist.end() || spawnlist.key_comp()(id, iter->first)))
-                                {
-                                    PCurrentChar->pushPacket(new CBasicPacket(*packet));
+                                    case TYPE_MOB:
+                                        pushPacketIfInSpawnList(PCurrentChar, PCurrentChar->SpawnMOBList);
+                                        break;
+                                    case TYPE_NPC:
+                                        pushPacketIfInSpawnList(PCurrentChar, PCurrentChar->SpawnNPCList);
+                                        break;
+                                    case TYPE_PET:
+                                        pushPacketIfInSpawnList(PCurrentChar, PCurrentChar->SpawnPETList);
+                                        break;
+                                    case TYPE_TRUST:
+                                        pushPacketIfInSpawnList(PCurrentChar, PCurrentChar->SpawnTRUSTList);
+                                        break;
+                                    case TYPE_PC:
+                                        pushPacketIfInSpawnList(PCurrentChar, PCurrentChar->SpawnPCList);
+                                        break;
+                                    default:
+                                        break;
                                 }
                             }
                             else
@@ -1457,7 +1474,7 @@ void CZoneEntities::ZoneServer(time_point tick)
 
             for (auto PMobIt : m_mobList)
             {
-                CMobEntity* PCurrentMob = (CMobEntity*)PMobIt.second;
+                CMobEntity* PCurrentMob = static_cast<CMobEntity*>(PMobIt.second);
                 PCurrentMob->PEnmityContainer->Clear(PMob->id);
             }
 
@@ -1468,16 +1485,19 @@ void CZoneEntities::ZoneServer(time_point tick)
 
             for (EntityList_t::const_iterator it = m_charList.begin(); it != m_charList.end(); ++it)
             {
-                CCharEntity* PChar = (CCharEntity*)it->second;
+                CCharEntity* PChar = static_cast<CCharEntity*>(it->second);
 
-                // If a mob is to be deleted from, then we need to ensure there's no reference
-                // to it on any players.
-                if (PChar->PClaimedMob != nullptr && PChar->PClaimedMob->id == PMob->id)
+                if (PChar->PClaimedMob == PMob)
                 {
                     PChar->PClaimedMob = nullptr;
                 }
 
-                if (distance(PChar->loc.p, PMob->loc.p) < 50)
+                if (PChar->currentEvent && PChar->currentEvent->targetEntity == PMob)
+                {
+                    PChar->currentEvent->targetEntity = nullptr;
+                }
+
+                if (PChar->SpawnMOBList.find(PMob->id) != PChar->SpawnMOBList.end())
                 {
                     PChar->SpawnMOBList.erase(PMob->id);
                 }
@@ -1528,7 +1548,7 @@ void CZoneEntities::ZoneServer(time_point tick)
             for (EntityList_t::const_iterator it = m_charList.begin(); it != m_charList.end(); ++it)
             {
                 CCharEntity* PChar = (CCharEntity*)it->second;
-                if (distance(PChar->loc.p, PNpc->loc.p) < 50)
+                if (PChar->SpawnNPCList.find(PNpc->id) != PChar->SpawnNPCList.end())
                 {
                     PChar->SpawnNPCList.erase(PNpc->id);
                 }

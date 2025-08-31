@@ -2,7 +2,6 @@
 -- Area: The Garden of Ru'Hmet
 --  Mob: Kf'ghrah WHM
 -----------------------------------
-require("scripts/globals/status")
 require("scripts/globals/magic") -- no spells are currently set due to lack of info
 -----------------------------------
 local entity = {}
@@ -16,6 +15,10 @@ entity.onMobSpawn = function(mob)
     -- Todo: confirm this is legit and move to mob_reistances table if so
     mob:addMod(xi.mod.LIGHT_MEVA, 100)
     mob:addMod(xi.mod.DARK_MEVA, -100)
+end
+
+entity.onMobEngaged = function(mob, target)
+    mob:setLocalVar("changeTime", 0)
 end
 
 entity.onMobRoam = function(mob)
@@ -44,7 +47,7 @@ entity.onMobFight = function(mob, target)
 
         mob:setAnimationSub(battleForm)
         mob:setLocalVar("changeTime", mob:getBattleTime())
-        if mob:setAnimationSub() == 0 then
+        if mob:getAnimationSub() == 0 then
             mob:setMagicCastingEnabled(true) -- will only cast magic in ball form
         else
             mob:setMagicCastingEnabled(false)

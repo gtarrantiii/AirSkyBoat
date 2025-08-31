@@ -2,7 +2,6 @@
 -- Zone: Fort_Karugo-Narugo_[S] (96)
 -----------------------------------
 local ID = require('scripts/zones/Fort_Karugo-Narugo_[S]/IDs')
-require('scripts/globals/status')
 require('scripts/globals/helm')
 -----------------------------------
 local zoneObject = {}
@@ -29,16 +28,18 @@ zoneObject.onTriggerAreaEnter = function(player, triggerArea)
 end
 
 zoneObject.onZoneWeatherChange = function(weather)
-    local npc = GetNPCByID(ID.npc.INDESCRIPT_MARKINGS)
+    if xi.settings.main.ENABLE_WOTG == 1 then
+        local npc = GetNPCByID(ID.npc.INDESCRIPT_MARKINGS)
 
-    if npc ~= nil then
-        if
-            weather == xi.weather.DUST_STORM or
-            weather == xi.weather.SAND_STORM
-        then
-            npc:setStatus(xi.status.DISAPPEAR)
-        else
-            npc:setStatus(xi.status.NORMAL)
+        if npc ~= nil then
+            if
+                weather == xi.weather.DUST_STORM or
+                weather == xi.weather.SAND_STORM
+            then
+                npc:setStatus(xi.status.DISAPPEAR)
+            else
+                npc:setStatus(xi.status.NORMAL)
+            end
         end
     end
 end

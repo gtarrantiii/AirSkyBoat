@@ -26,8 +26,10 @@
 #include "conquest_data.h"
 #include "conquest_system.h"
 #include "entities/charentity.h"
+#include "map/besieged_data.h"
+#include "map/besieged_system.h"
 
-#include "../utils/charutils.h"
+#include "utils/charutils.h"
 
 #include "conquest_map.h"
 
@@ -78,30 +80,56 @@ CConquestPacket::CConquestPacket(CCharEntity* PChar)
     ref<uint32>(0x90) = charutils::GetPoints(PChar, charutils::GetConquestPointsName(PChar).c_str());
     ref<uint8>(0x9C)  = 0x01;
 
-    // uint8 packet[] =
-    //{
-    //    0x80, 0x78, 0x52, 0x03, 0x1a, 0x46, 0x04, 0x00, 0x42, 0x46, 0x04, 0x00, 0x65, 0x3d, 0x04, 0x00
-    //};
-    // memcpy(data+(0xA0), &packet, 16);
+    // Overview Map Data [0xA0 - 0xA3]
+    std::shared_ptr<BesiegedData> besiegedData = besieged::GetBesiegedData();
+    packBitsBE(data + 0xA0, besiegedData->getAstralCandescenceOwner(), 0, 2);
+    packBitsBE(data + 0xA0, besiegedData->getAlZhabiOrders(), 2, 2);
 
-    ref<uint8>(0xA0) = 16; // Situation: mamool ja level -> (1) 16 (2) 32 (3) 48 (4) 64 (5) 80 (6) 96 (7) 112 (8) 128
-    ref<uint8>(0xA1) = 17; // Situation: troll mercenaries level -> 1~12 next with another
-    ref<uint8>(0xA2) = 0;  // Situation: mamool ja siege status -> (0) training > (1) advancing > (2) attacking > (3) retreat | (4) defense (5) preparing
-    ref<uint8>(0xA3) = 4;  // Situation: undead siege status? (3) defense (4) training(5) defense
+    stronghold_info_t mamook   = besiegedData->getBeastmenStrongholdInfo(BESIEGED_STRONGHOLD::MAMOOK);
+    stronghold_info_t halvung  = besiegedData->getBeastmenStrongholdInfo(BESIEGED_STRONGHOLD::HALVUNG);
+    stronghold_info_t arrapago = besiegedData->getBeastmenStrongholdInfo(BESIEGED_STRONGHOLD::ARRAPAGO);
 
-    ref<uint8>(0xA4) = 0; // mamool ja: (13) preparing (26) attacking (32) training
-    ref<uint8>(0xA5) = 0; // mamool ja: enemies forces (1=32)
-    ref<uint8>(0xA6) = 0; // mamool ja: archaic mirror (1=2)
-    ref<uint8>(0xA7) = 0;
+    // These are redundant with the data later on.
+    // TODO: Verify they are needed or correct
+    packBitsBE(data + 0xA0, mamook.strongholdLevel, 4, 4);
+    packBitsBE(data + 0xA1, halvung.strongholdLevel, 0, 4);
+    packBitsBE(data + 0xA1, arrapago.strongholdLevel, 4, 4);
 
-    ref<uint8>(0xA8) = 0; // trolls: enemies forces (66=8)
-    ref<uint8>(0xA9) = 0; // trolls: (70) attacking
-    ref<uint8>(0xAA) = 0; // trolls: archaic mirror (4=8)
-    ref<uint8>(0xAB) = 0;
-    ref<uint8>(0xAC) = 0; // undead: enemies forces (101=12)
-    ref<uint8>(0xAD) = 0; // undead: (61) preparing
-    ref<uint8>(0xAE) = 0; // undead: archaic mirror (4=8)
-    ref<uint8>(0xAF) = 0;
+    // These are redundant with the data later on.
+    // TODO: Verify they are needed or correct
+    packBitsBE(data + 0xA2, mamook.orders, 0, 3);
+    packBitsBE(data + 0xA2, halvung.orders, 3, 3);
+    packBitsBE(data + 0xA2, arrapago.orders, 6, 3);
+
+    // TODO: Unknown constant
+    packBitsBE(data + 0xA2, 1, 9, 1);
+
+    // Mamook Stronghold - Mamool Ja Data
+    packBitsBE(data + 0xA4, mamook.orders, 0, 3);
+    packBitsBE(data + 0xA4, mamook.forces, 3, 8);
+    packBitsBE(data + 0xA4, mamook.strongholdLevel, 11, 4);
+    packBitsBE(data + 0xA4, mamook.mirrors % 2 != 0, 15, 1);
+    packBitsBE(data + 0xA6, (mamook.mirrors / 2), 0, 4);
+    packBitsBE(data + 0xA6, mamook.prisoners, 4, 4);
+    ref<uint8>(0xA7) = 0x00; // Mamook
+
+    // Halvung Stronghold - Trolls Data
+    packBitsBE(data + 0xA8, halvung.orders, 0, 3);
+    packBitsBE(data + 0xA8, halvung.forces, 3, 8);
+    packBitsBE(data + 0xA8, halvung.strongholdLevel, 11, 4);
+    packBitsBE(data + 0xA8, halvung.mirrors % 2 != 0, 15, 1);
+    packBitsBE(data + 0xAA, (halvung.mirrors / 2), 0, 4);
+    packBitsBE(data + 0xAA, halvung.prisoners, 4, 4);
+    ref<uint8>(0xAB) = 0x00; // Halvung
+
+    // Arrapago Stronghold - Undead Data
+    packBitsBE(data + 0xAC, arrapago.orders, 0, 3);
+    packBitsBE(data + 0xAC, arrapago.forces, 3, 8);
+    packBitsBE(data + 0xAC, arrapago.strongholdLevel, 11, 4);
+    packBitsBE(data + 0xAC, arrapago.mirrors % 2 != 0, 15, 1);
+    packBitsBE(data + 0xAE, (arrapago.mirrors / 2), 0, 4);
+    packBitsBE(data + 0xAE, arrapago.prisoners, 4, 4);
+    ref<uint8>(0xAF) = 0x00; // Arrapago
 
     ref<uint32>(0xB0) = charutils::GetPoints(PChar, "imperial_standing");
 }

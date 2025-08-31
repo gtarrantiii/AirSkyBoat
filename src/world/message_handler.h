@@ -22,6 +22,20 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #pragma once
 
 #include "common/mmo.h"
+#include "common/socket.h"
+
+struct HandleableMessage
+{
+    std::vector<uint8> payload;
+    in_addr            from_addr;
+    uint16             from_port;
+};
+
+#ifdef WIN32
+#include <winsock2.h>
+#else
+#include <netinet/in.h>
+#endif
 
 class IMessageHandler
 {
@@ -30,11 +44,9 @@ public:
     {
     }
 
-    /*
-     * NOTE: The copy of payload here is intentional, since these systems will eventually
-     *     : be moved to their own threads.
+    /**
+     * Handles an incoming message from a map server.
+     * Return true if the message was handled, false otherwise.
      */
-    virtual bool handleMessage(std::vector<uint8> payload,
-                               in_addr            from_addr,
-                               uint16             from_port) = 0;
+    virtual bool handleMessage(HandleableMessage&& message) = 0;
 };

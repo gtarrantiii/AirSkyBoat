@@ -1,10 +1,8 @@
 -----------------------------------------
 -- ID: 15462
 -- Item: Talisman Obi
--- Effect: 3Min, MP+12 Enmity-2
+-- Effect: 30Min, MP+12 Enmity-2
 -----------------------------------------
-require("scripts/globals/status")
-require("scripts/globals/msg")
 -----------------------------------------
 local itemObject = {}
 

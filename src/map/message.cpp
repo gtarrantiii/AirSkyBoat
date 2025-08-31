@@ -25,6 +25,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include "message.h"
 
 #include "alliance.h"
+#include "besieged_system.h"
 #include "conquest_system.h"
 #include "linkshell.h"
 #include "party.h"
@@ -140,26 +141,71 @@ namespace message
             }
             case MSG_CHAT_PARTY:
             {
-                CCharEntity* PChar = zoneutils::GetChar(ref<uint32>((uint8*)extra.data(), 0));
-                if (PChar)
+                uint32  partyid  = ref<uint32>((uint8*)extra.data(), 0);
+                uint32  senderid = ref<uint32>((uint8*)extra.data(), 4);
+                CParty* PParty   = nullptr;
+
+                // TODO: when Party/Alliance gets a rewrite, make a zoneutils::ForEachParty or some other accessor to reduce the amount of iterations significantly.
+                // clang-format off
+                zoneutils::ForEachZone([partyid, &PParty](CZone* PZone)
                 {
-                    if (PChar->PParty)
+                    PZone->ForEachChar([partyid, &PParty](CCharEntity* PChar)
                     {
-                        if (PChar->PParty->m_PAlliance != nullptr)
+                        if (PChar->PParty && PChar->PParty->GetPartyID() == partyid)
                         {
-                            for (auto& i : PChar->PParty->m_PAlliance->partyList)
-                            {
-                                CBasicPacket* newPacket = new CBasicPacket();
-                                memcpy(*newPacket, packet.data(), std::min<size_t>(packet.size(), PACKET_SIZE));
-                                i->PushPacket(ref<uint32>((uint8*)extra.data(), 4), 0, newPacket);
-                            }
+                            PParty = PChar->PParty;
+                            return;
                         }
-                        else
+                    });
+
+                    if (PParty)
+                    {
+                        return;
+                    }
+                });
+                // clang-format on
+
+                if (PParty)
+                {
+                    CBasicPacket* newPacket = new CBasicPacket();
+                    memcpy(*newPacket, packet.data(), std::min<size_t>(packet.size(), PACKET_SIZE));
+                    PParty->PushPacket(senderid, 0, newPacket);
+                }
+                break;
+            }
+            case MSG_CHAT_ALLIANCE:
+            {
+                uint32     allianceid = ref<uint32>((uint8*)extra.data(), 0);
+                uint32     senderid   = ref<uint32>((uint8*)extra.data(), 4);
+                CAlliance* PAlliance  = nullptr;
+
+                // TODO: when Party/Alliance gets a rewrite, make a zoneutils::ForEachParty or some other accessor to reduce the amount of iterations significantly.
+                // clang-format off
+                zoneutils::ForEachZone([allianceid, &PAlliance](CZone* PZone)
+                {
+                    PZone->ForEachChar([allianceid, &PAlliance](CCharEntity* PChar)
+                    {
+                        if (PChar->PParty && PChar->PParty && PChar->PParty->m_PAlliance && PChar->PParty->m_PAlliance->m_AllianceID == allianceid)
                         {
-                            CBasicPacket* newPacket = new CBasicPacket();
-                            memcpy(*newPacket, packet.data(), std::min<size_t>(packet.size(), PACKET_SIZE));
-                            PChar->PParty->PushPacket(ref<uint32>((uint8*)extra.data(), 4), 0, newPacket);
+                            PAlliance = PChar->PParty->m_PAlliance;
+                            return;
                         }
+                    });
+
+                    if (PAlliance)
+                    {
+                        return;
+                    }
+                });
+                // clang-format on
+
+                if (PAlliance)
+                {
+                    for (auto& currentParty : PAlliance->partyList)
+                    {
+                        CBasicPacket* newPacket = new CBasicPacket();
+                        memcpy(*newPacket, packet.data(), std::min<size_t>(packet.size(), PACKET_SIZE));
+                        currentParty->PushPacket(senderid, 0, newPacket);
                     }
                 }
                 break;
@@ -338,43 +384,115 @@ namespace message
             }
             case MSG_PT_RELOAD:
             {
-                if (extra.size() == 8)
+                uint32 partyid = ref<uint32>((uint8*)extra.data(), 0);
+
+                int ret = sql->Query("SELECT charid FROM accounts_parties WHERE partyid = %u", partyid);
+                if (ret != SQL_ERROR && sql->NumRows() != 0)
                 {
-                    CCharEntity* PChar = zoneutils::GetCharToUpdate(ref<uint32>((uint8*)extra.data(), 4), ref<uint32>((uint8*)extra.data(), 0));
-                    if (PChar)
+                    while (sql->NextRow() == SQL_SUCCESS)
                     {
-                        PChar->ReloadPartyInc();
-                        break;
+                        CCharEntity* PChar = zoneutils::GetChar(sql->GetUIntData(0));
+                        if (PChar)
+                        {
+                            PChar->ReloadPartyInc();
+                        }
                     }
                 }
-                else
-                {
-                    CCharEntity* PChar = zoneutils::GetChar(ref<uint32>((uint8*)extra.data(), 0));
-                    if (PChar)
-                    {
-                        PChar->ForAlliance([](CBattleEntity* PMember)
-                                           { ((CCharEntity*)PMember)->ReloadPartyInc(); });
-                    }
-                }
+
                 break;
             }
             case MSG_PT_DISBAND:
             {
-                CCharEntity* PChar = zoneutils::GetChar(ref<uint32>((uint8*)extra.data(), 0));
-                uint32       id    = ref<uint32>((uint8*)extra.data(), 4);
-                if (PChar)
+                uint32  partyid = ref<uint32>((uint8*)extra.data(), 0);
+                CParty* PParty  = nullptr;
+
+                // TODO: when Party/Alliance gets a rewrite, make a zoneutils::ForEachParty or some other accessor to reduce the amount of iterations significantly.
+                // clang-format off
+                zoneutils::ForEachZone([partyid, &PParty](CZone* PZone)
                 {
-                    if (PChar->PParty)
+                    PZone->ForEachChar([partyid, &PParty](CCharEntity* PChar)
                     {
-                        if (PChar->PParty->m_PAlliance && PChar->PParty->m_PAlliance->m_AllianceID == id)
+                        if (PChar->PParty && PChar->PParty->GetPartyID() == partyid)
                         {
-                            PChar->PParty->m_PAlliance->dissolveAlliance(false);
+                            PParty = PChar->PParty;
+                            return;
                         }
-                        else
+                    });
+
+                    if (PParty)
+                    {
+                        return;
+                    }
+                });
+                // clang-format on
+
+                if (PParty)
+                {
+                    PParty->DisbandParty(false);
+                }
+
+                break;
+            }
+            case MSG_ALLIANCE_RELOAD:
+            {
+                uint32 allianceid = ref<uint32>((uint8*)extra.data(), 0);
+
+                int ret = sql->Query("SELECT charid FROM accounts_parties WHERE allianceid = %u", allianceid);
+                if (ret != SQL_ERROR && sql->NumRows() != 0)
+                {
+                    while (sql->NextRow() == SQL_SUCCESS)
+                    {
+                        CCharEntity* PChar = zoneutils::GetChar(sql->GetUIntData(0));
+                        if (PChar)
                         {
-                            PChar->PParty->DisbandParty(false);
+                            PChar->ReloadPartyInc();
                         }
                     }
+                }
+
+                break;
+            }
+            case MSG_ALLIANCE_DISSOLVE:
+            {
+                uint32     allianceid = ref<uint32>((uint8*)extra.data(), 0);
+                CAlliance* PAlliance  = nullptr;
+
+                // TODO: when Party/Alliance gets a rewrite, make a zoneutils::ForEachAlliance or some other accessor to reduce the amount of iterations significantly.
+                // clang-format off
+                zoneutils::ForEachZone([allianceid, &PAlliance](CZone* PZone)
+                {
+                    PZone->ForEachChar([allianceid, &PAlliance](CCharEntity* PChar)
+                    {
+                        if (PChar->PParty && PChar->PParty->m_PAlliance && PChar->PParty->m_PAlliance->m_AllianceID == allianceid)
+                        {
+                            PAlliance = PChar->PParty->m_PAlliance;
+                            return;
+                        }
+                    });
+
+                    if (PAlliance)
+                    {
+                        return;
+                    }
+                });
+                // clang-format on
+
+                if (PAlliance)
+                {
+                    PAlliance->dissolveAlliance(false);
+                }
+
+                break;
+            }
+            case MSG_PLAYER_KICK:
+            {
+                uint32 charid = ref<uint32>((uint8*)extra.data(), 0);
+
+                // player was kicked and is no longer in alliance/party db -- they need a direct update.
+                CCharEntity* PChar = zoneutils::GetChar(charid);
+                if (PChar)
+                {
+                    PChar->ReloadPartyInc();
                 }
                 break;
             }
@@ -683,12 +801,12 @@ namespace message
                         conquest::HandleZMQMessage(data);
                         break;
                     }
-                    /*
                     case REGIONAL_EVT_MSG_BESIEGED:
                     {
-                        // TODO: Handle besieged message
+                        besieged::HandleZMQMessage(data);
                         break;
                     }
+                    /*
                     case REGIONAL_EVT_MSG_CAMPAIGN:
                     {
                         // TODO: Handle besieged message

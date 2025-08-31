@@ -9,11 +9,8 @@
 -- Halver                : !pos 2 0.1 0.1 233
 -- Fountain of Kings     : !pos 567 18 -939 208
 -----------------------------------
-require('scripts/globals/items')
-require('scripts/globals/keyitems')
 require('scripts/globals/missions')
 require('scripts/globals/npc_util')
-require('scripts/globals/settings')
 require('scripts/globals/interaction/mission')
 require('scripts/globals/zone')
 -----------------------------------
@@ -189,7 +186,10 @@ mission.sections =
             onZoneIn =
             {
                 function(player, prevZone)
-                    if mission:getVar(player, 'Progress') < os.time() then
+                    if
+                        mission:getVar(player, 'Progress') < os.time() and
+                        not player:isInMogHouse()
+                    then
                         return 16
                     end
                 end

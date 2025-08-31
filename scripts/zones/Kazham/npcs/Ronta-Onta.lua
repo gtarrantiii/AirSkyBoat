@@ -4,8 +4,6 @@
 -- Starts and Finishes Quest: Trial by Fire
 -- !pos 100 -15 -97 250
 -----------------------------------
-require("scripts/globals/settings")
-require("scripts/globals/keyitems")
 require("scripts/globals/shop")
 require("scripts/globals/quests")
 local ID = require("scripts/zones/Kazham/IDs")
@@ -51,7 +49,7 @@ entity.onTrigger = function(player, npc)
             numitem = numitem + 8
         end   -- Egil's Torch
 
-        if player:hasSpell(298) then
+        if player:hasSpell(xi.magic.spell.IFRIT) then
             numitem = numitem + 32
         end  -- Ability to summon Ifrit
 
@@ -91,7 +89,7 @@ entity.onEventFinish = function(player, csid, option)
             if option == 5 then
                 npcUtil.giveCurrency(player, 'gil', 10000)
             elseif option == 6 then
-                player:addSpell(298) -- Ifrit Spell
+                player:addSpell(xi.magic.spell.IFRIT) -- Ifrit Spell
                 player:messageSpecial(ID.text.IFRIT_UNLOCKED, 0, 0, 0)
             else
                 player:addItem(item)

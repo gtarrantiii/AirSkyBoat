@@ -1,11 +1,8 @@
 -----------------------------------
 -- Song Utilities
 -----------------------------------
-require("scripts/globals/spell_data")
 require("scripts/globals/jobpoints")
-require("scripts/globals/status")
 require("scripts/globals/utils")
-require("scripts/globals/msg")
 -----------------------------------
 xi = xi or {}
 xi.spells = xi.spells or {}
@@ -62,9 +59,9 @@ local pTable =
     [xi.magic.spell.SHEEPFOE_MAMBO    ] = { 1, xi.effect.MAMBO,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MAMBO_EFFECT,    0,                        0,                    5,  85,  15, 2.5, 18, true  },
     [xi.magic.spell.DRAGONFOE_MAMBO   ] = { 2, xi.effect.MAMBO,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MAMBO_EFFECT,    0,                        0,                    9, 130,  30, 2.5, 18, true  },
     -- March
-    [xi.magic.spell.ADVANCING_MARCH   ] = { 1, xi.effect.MARCH,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MARCH_EFFECT,    0,                        0,                   35, 200,  70,  10,  7, true  },
-    [xi.magic.spell.VICTORY_MARCH     ] = { 2, xi.effect.MARCH,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MARCH_EFFECT,    0,                        0,                   43, 300, 128,  10,  7, true  },
-    [xi.magic.spell.HONOR_MARCH       ] = { 3, xi.effect.MARCH,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MARCH_EFFECT,    0,                        0,                   24, 400, 126,  10,  7, true  }, -- Not an error. It is weaker.
+    [xi.magic.spell.ADVANCING_MARCH   ] = { 1, xi.effect.MARCH,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MARCH_EFFECT,    0,                        0,                   35, 200,  64,  16,  7, true  },
+    [xi.magic.spell.VICTORY_MARCH     ] = { 2, xi.effect.MARCH,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MARCH_EFFECT,    0,                        0,                   53, 300, 128,  16,  7, true  },
+    [xi.magic.spell.HONOR_MARCH       ] = { 3, xi.effect.MARCH,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MARCH_EFFECT,    0,                        0,                   24, 400, 126,  10,  7, true  },-- Not an error. It is weaker.
     -- Minne: Skill Caps unknown?
     [xi.magic.spell.KNIGHTS_MINNE     ] = { 1, xi.effect.MINNE,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MINNE_EFFECT,    xi.merit.MINNE_EFFECT,    xi.jp.MINNE_EFFECT,   5,   0,  14, 2.5, 15, true  },
     [xi.magic.spell.KNIGHTS_MINNE_II  ] = { 2, xi.effect.MINNE,     xi.mod.AUGMENT_SONG_STAT, xi.mod.MINNE_EFFECT,    xi.merit.MINNE_EFFECT,    xi.jp.MINNE_EFFECT,  6,   0,  28, 2.5, 15, true  },
@@ -97,10 +94,10 @@ local pTable =
     [xi.magic.spell.SHINING_FANTASIA  ] = { 1, xi.effect.FANTASIA,  xi.mod.AUGMENT_SONG_STAT, 0,                      0,                        0,                   20, 200,  40,   2, 10, true  },
     [xi.magic.spell.WARDING_ROUND     ] = { 1, xi.effect.ROUND,     xi.mod.AUGMENT_SONG_STAT, 0,                      0,                        0,                   20, 200,  40,   2, 10, true  },
     -- Misc.
-    [xi.magic.spell.GODDESSS_HYMNUS   ] = { 1, xi.effect.HYMNUS,    xi.mod.AUGMENT_SONG_STAT, 0,                      0,                        0,                    1,   0,   1,   0,  0, false },
+    [xi.magic.spell.GODDESSS_HYMNUS   ] = { 1, xi.effect.HYMNUS,    xi.mod.AUGMENT_SONG_STAT, xi.mod.HYMNUS_EFFECT,   0,                        0,                    1,   0,   1,   0,  0, false },
     [xi.magic.spell.SENTINELS_SCHERZO ] = { 1, xi.effect.SCHERZO,   xi.mod.AUGMENT_SONG_STAT, 0,                      0,                        0,                    1, 350,  45,   1, 10, false },
-    [xi.magic.spell.RAPTOR_MAZURKA    ] = { 1, xi.effect.MAZURKA,   xi.mod.AUGMENT_SONG_STAT, 0,                      0,                        0,                   12,   0,  12,   0,  0, false },
-    [xi.magic.spell.CHOCOBO_MAZURKA   ] = { 1, xi.effect.MAZURKA,   xi.mod.AUGMENT_SONG_STAT, 0,                      0,                        0,                   24,   0,  24,   0,  0, false },
+    [xi.magic.spell.RAPTOR_MAZURKA    ] = { 1, xi.effect.MAZURKA,   xi.mod.AUGMENT_SONG_STAT, xi.mod.MAZURKA_EFFECT,  0,                        0,                   12,   0,  12,   0,  0, false },
+    [xi.magic.spell.CHOCOBO_MAZURKA   ] = { 1, xi.effect.MAZURKA,   xi.mod.AUGMENT_SONG_STAT, xi.mod.MAZURKA_EFFECT,  0,                        0,                   24,   0,  24,   0,  0, false },
 
     -- Emnity Songs
     [xi.magic.spell.FOE_SIRVENTE      ] = { 1, xi.effect.SIRVENTE,  xi.mod.AUGMENT_SONG_STAT, 0,                      0,                        0,                   35,   0,  35,   1,  0, true  },
@@ -124,7 +121,10 @@ xi.spells.enhancing.calculateSongPower = function(caster, target, spell, spellId
 
     -- Ensure ranged slot is an instrument
     local rangeSkill = caster:getWeaponSkillType(xi.slot.RANGED)
-    if rangeSkill ~= xi.skill.STRING_INSTRUMENT or rangeSkill ~= xi.skill.WIND_INSTRUMENT then
+    if
+        rangeSkill ~= xi.skill.STRING_INSTRUMENT or
+        rangeSkill ~= xi.skill.WIND_INSTRUMENT
+    then
         singingLvl = singingLvl + caster:getWeaponSkillLevel(xi.slot.RANGED)
     end
 
@@ -157,7 +157,7 @@ xi.spells.enhancing.calculateSongPower = function(caster, target, spell, spellId
         end
     -- Level 75 Victory March tiers
     elseif songEffect == xi.effect.MARCH and tier == 2 and singingLvl >= 445 then
-        power = 85
+        power = 73
         local increase = 23
         for _, v in pairs(marchTiers) do
             if singingLvl >= v then
@@ -292,11 +292,9 @@ xi.spells.enhancing.useEnhancingSong = function(caster, target, spell)
 
     -- EXCEPTION: March Songs effect conversion.
     if songEffect == xi.effect.MARCH then
-        if power >= 85 then
-            power = math.floor((power / 1000) * 10000)
-        else
-            power = math.floor((power / 1024) * 10000)
-        end
+        -- March haste is a value of x/1024 BGWiki has tiers for Advancing March: https://www.bg-wiki.com/index.php?title=Victory_March&oldid=97072
+        -- Testing that was used as a source for BGWiki: https://www.bluegartr.com/threads/52417-Yey!-Another-Haste-Topic!
+        power = math.floor((power / 1024) * 10000)
     end
 
     -- Handle Status Effects.

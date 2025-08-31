@@ -5,13 +5,12 @@
 local ID = require("scripts/zones/RuAun_Gardens/IDs")
 mixins = { require("scripts/mixins/job_special") }
 require("scripts/globals/mobs")
-require("scripts/globals/status")
 -----------------------------------
 local entity = {}
 
-entity.onMobInitialize = function(mob)
+entity.onMobSpawn = function(mob, target)
     mob:setMod(xi.mod.SILENCERES, 90)
-    mob:addMod(xi.mod.EVA, 39)
+    mob:setMod(xi.mod.EVA, 316)
     mob:addMod(xi.mod.DEF, 210)
     mob:addMod(xi.mod.VIT, 78)
     mob:addMod(xi.mod.DOUBLE_ATTACK, 10)
@@ -19,9 +18,6 @@ entity.onMobInitialize = function(mob)
     mob:setMobMod(xi.mobMod.ADD_EFFECT, 1)
     mob:setMobMod(xi.mobMod.MAGIC_COOL, 35)
     mob:setLocalVar('defaultATT', mob:getMod(xi.mod.ATT))
-end
-
-entity.onMobSpawn = function(mob, target)
     GetNPCByID(ID.npc.PORTAL_TO_GENBU):setAnimation(xi.anim.CLOSE_DOOR)
     mob:setMagicCastingEnabled(false)
 end

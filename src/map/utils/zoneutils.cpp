@@ -532,7 +532,7 @@ namespace zoneutils
                                 PMob->m_Type        = (uint8)sql->GetIntData(22);
                                 PMob->m_Immunity    = (IMMUNITY)sql->GetIntData(23);
                                 PMob->m_EcoSystem   = (ECOSYSTEM)sql->GetIntData(24);
-                                PMob->m_ModelRadius = (uint8)sql->GetIntData(25);
+                                PMob->m_ModelRadius = (float)sql->GetIntData(25);
 
                                 PMob->speed    = (uint8)sql->GetIntData(26);
                                 PMob->speedsub = (uint8)sql->GetIntData(26);
@@ -1394,6 +1394,11 @@ namespace zoneutils
         }
 
         luautils::AfterZoneIn(PChar);
+    }
+
+    bool IsAlwaysOutOfNationControl(REGION_TYPE region)
+    {
+        return region >= REGION_TYPE::SANDORIA && region <= REGION_TYPE::LIMBUS;
     }
 
 }; // namespace zoneutils

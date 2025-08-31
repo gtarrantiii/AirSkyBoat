@@ -8,8 +8,6 @@
 local ID = require("scripts/zones/Apollyon/IDs")
 require("scripts/globals/battlefield")
 require("scripts/globals/limbus")
-require("scripts/globals/items")
-require("scripts/globals/keyitems")
 -----------------------------------
 
 local content = Limbus:new({
@@ -271,6 +269,7 @@ content.groups =
         mods =
         {
             [xi.mod.UDMGPHYS] = -8000,
+            [xi.mod.UDMGRANGE] = -8000,
             [xi.mod.MAGIC_NULL] = 100,
         },
 
@@ -298,10 +297,11 @@ content.groups =
         death = function(battlefield, mob, count)
             local boss = mob:getZone():queryEntitiesByName("Evil_Armory")[1]
             boss:setMod(xi.mod.UDMGPHYS, (8 - count) * -1000)
+            boss:setMod(xi.mod.UDMGRANGE, (8 - count) * -1000)
             if count == 1 then
                 -- Make the boss become targetable after the first kill
                 boss:setBattleID(0)
-                boss:setStatus(xi.status.MOB)
+                boss:setStatus(xi.status.UPDATE)
                 boss:setMobMod(xi.mobMod.NO_AGGRO, 0)
                 boss:setMobMod(xi.mobMod.NO_LINK, 0)
             end

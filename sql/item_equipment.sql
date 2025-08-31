@@ -7031,11 +7031,11 @@ INSERT INTO `item_equipment` VALUES (17303,'manji_shuriken',48,0,4096,30,0,0,8,4
 INSERT INTO `item_equipment` VALUES (17304,'fuma_shuriken',60,0,4096,89,0,0,8,4,0,255);
 INSERT INTO `item_equipment` VALUES (17305,'cluster_arm',5,0,2101409,29,0,0,8,4,0,255);
 INSERT INTO `item_equipment` VALUES (17306,'snoll_arm',5,0,2101409,29,0,0,8,4,0,255);
-INSERT INTO `item_equipment` VALUES (17307,'dart',7,0,2166961,16,0,0,8,4,0,255);
-INSERT INTO `item_equipment` VALUES (17308,'hawkeye',14,0,2166961,0,0,0,8,4,0,255);
+INSERT INTO `item_equipment` VALUES (17307,'dart',7,0,2166961,22,0,0,8,4,0,255);
+INSERT INTO `item_equipment` VALUES (17308,'hawkeye',14,0,2166961,22,0,0,8,4,0,255);
 INSERT INTO `item_equipment` VALUES (17309,'pinwheel',24,0,2166961,22,0,0,8,4,0,255);
 INSERT INTO `item_equipment` VALUES (17310,'hyo',36,0,2166961,16,0,0,8,4,0,255);
-INSERT INTO `item_equipment` VALUES (17311,'dart_+1',58,0,2166961,16,0,0,8,4,0,255);
+INSERT INTO `item_equipment` VALUES (17311,'dart_+1',58,0,2166961,22,0,0,8,4,0,255);
 INSERT INTO `item_equipment` VALUES (17312,'iron_bullet',50,0,70688,0,0,0,8,0,0,255);
 INSERT INTO `item_equipment` VALUES (17313,'grenade',19,0,2101409,29,0,0,8,4,0,255);
 INSERT INTO `item_equipment` VALUES (17314,'quake_grenade',32,0,2101409,29,0,0,8,4,0,255);
@@ -8367,7 +8367,7 @@ INSERT INTO `item_equipment` VALUES (18655,'guttler',90,0,256,347,0,1,3,0,0,255)
 INSERT INTO `item_equipment` VALUES (18656,'bravura',90,0,1,339,0,1,1,0,0,255);
 INSERT INTO `item_equipment` VALUES (18657,'gungnir',90,0,8192,217,0,1,1,0,0,255);
 INSERT INTO `item_equipment` VALUES (18658,'apocalypse',90,0,128,338,0,1,1,0,0,255);
-INSERT INTO `item_equipment` VALUES (18659,'kikoku',90,0,4096,334,0,1,3,0,0,255);
+INSERT INTO `item_equipment` VALUES (18659,'kikoku',90,0,4096,344,0,1,3,0,0,255);
 INSERT INTO `item_equipment` VALUES (18660,'amanomurakumo',90,0,2048,340,0,1,1,0,0,255);
 INSERT INTO `item_equipment` VALUES (18661,'mjollnir',90,0,4,307,0,1,3,0,0,255);
 INSERT INTO `item_equipment` VALUES (18662,'claustrum',90,0,16392,342,0,1,1,0,0,255);

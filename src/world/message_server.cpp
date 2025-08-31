@@ -24,6 +24,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 #include <queue>
 #include <set>
 
+#include "besieged_system.h"
 #include "common/logging.h"
 #include "conquest_system.h"
 #include "message_server.h"
@@ -48,14 +49,28 @@ namespace
     zmq::context_t                 zContext;
     std::unique_ptr<zmq::socket_t> zSocket;
 
-    moodycamel::ConcurrentQueue<chat_message_t> outgoing_queue;
+    moodycamel::ConcurrentQueue<chat_message_t>    outgoing_queue;
+    moodycamel::ConcurrentQueue<HandleableMessage> external_processing_queue;
 
-    std::unique_ptr<SqlConnection>                                        sql;
-    std::unordered_map<REGIONALMSGTYPE, std::shared_ptr<IMessageHandler>> regionalMsgHandlers;
-    std::unordered_map<uint16, zone_settings_t>                           zoneSettingsMap;
-    std::vector<uint64>                                                   mapEndpoints;
-    std::vector<uint64>                                                   yellMapEndpoints;
+    std::unique_ptr<SqlConnection>              sql;
+    std::unordered_map<uint16, zone_settings_t> zoneSettingsMap;
+    std::vector<uint64>                         mapEndpoints;
+    std::vector<uint64>                         yellMapEndpoints;
 } // namespace
+
+void queue_data(uint64 ipp, MSGSERVTYPE type, const uint8* data, std::size_t size)
+{
+    zmq::message_t dataMsg = zmq::message_t(size);
+    memcpy(dataMsg.data(), data, size);
+    queue_message(ipp, MSG_WORLD2MAP_REGIONAL_EVENT, &dataMsg);
+}
+
+void queue_data_broadcast(MSGSERVTYPE type, const uint8* data, std::size_t size)
+{
+    zmq::message_t dataMsg = zmq::message_t(size);
+    memcpy(dataMsg.data(), data, size);
+    queue_message_broadcast(MSG_WORLD2MAP_REGIONAL_EVENT, &dataMsg);
+}
 
 void queue_message(uint64 ipp, MSGSERVTYPE type, zmq::message_t* extra, zmq::message_t* packet)
 {
@@ -78,6 +93,12 @@ void queue_message_broadcast(MSGSERVTYPE type, zmq::message_t* extra, zmq::messa
     {
         queue_message(ipp, type, extra, packet);
     }
+}
+
+auto pop_external_processing_message() -> std::optional<HandleableMessage>
+{
+    HandleableMessage out;
+    return external_processing_queue.try_dequeue(out) ? std::optional<HandleableMessage>(out) : std::nullopt;
 }
 
 void message_server_send(uint64 ipp, MSGSERVTYPE type, zmq::message_t* extra, zmq::message_t* packet)
@@ -107,7 +128,7 @@ std::string ipp_to_string(uint64 ipp)
     char target_address[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &target, target_address, INET_ADDRSTRLEN);
 
-    return fmt::format("{}:{}", target_address, port);
+    return fmt::format("{}:{}", str(target_address), port);
 }
 
 void message_server_parse(MSGSERVTYPE type, zmq::message_t* extra, zmq::message_t* packet, zmq::message_t* from)
@@ -133,7 +154,7 @@ void message_server_parse(MSGSERVTYPE type, zmq::message_t* extra, zmq::message_
         {
             const char* query = "SELECT server_addr, server_port FROM accounts_sessions LEFT JOIN chars ON "
                                 "accounts_sessions.charid = chars.charid WHERE charname = '%s' LIMIT 1;";
-            ret               = sql->Query(query, (int8*)extra->data() + 4);
+            ret               = sql->Query(query, str((int8*)extra->data() + 4));
             if (sql->NumRows() == 0)
             {
                 query = "SELECT server_addr, server_port FROM accounts_sessions WHERE charid = %d LIMIT 1;";
@@ -145,12 +166,25 @@ void message_server_parse(MSGSERVTYPE type, zmq::message_t* extra, zmq::message_
         case MSG_PT_RELOAD:
         case MSG_PT_DISBAND:
         {
+            // TODO: simplify query now that there's alliance versions?
             const char* query = "SELECT server_addr, server_port, MIN(charid) FROM accounts_sessions JOIN accounts_parties USING (charid) "
                                 "WHERE IF (allianceid <> 0, allianceid = (SELECT MAX(allianceid) FROM accounts_parties WHERE partyid = %d), "
                                 "partyid = %d) GROUP BY server_addr, server_port;";
 
             uint32 partyid = ref<uint32>((uint8*)extra->data(), 0);
             ret            = sql->Query(query, partyid, partyid);
+            break;
+        }
+        case MSG_CHAT_ALLIANCE:
+        case MSG_ALLIANCE_RELOAD:
+        case MSG_ALLIANCE_DISSOLVE:
+        {
+            const char* query = "SELECT server_addr, server_port, MIN(charid) FROM accounts_sessions JOIN accounts_parties USING (charid) "
+                                "WHERE allianceid = %d "
+                                "GROUP BY server_addr, server_port;";
+
+            uint32 allianceid = ref<uint32>((uint8*)extra->data(), 0);
+            ret               = sql->Query(query, allianceid);
             break;
         }
         case MSG_CHAT_LINKSHELL:
@@ -172,7 +206,7 @@ void message_server_parse(MSGSERVTYPE type, zmq::message_t* extra, zmq::message_
             for (const auto& ipp : yellMapEndpoints)
             {
                 ShowDebug(fmt::format("Message: -> rerouting to {}", ipp_to_string(ipp)));
-                queue_message(ipp, type, extra, packet);
+                message_server_send(ipp, type, extra, packet);
             }
             break;
         }
@@ -181,12 +215,13 @@ void message_server_parse(MSGSERVTYPE type, zmq::message_t* extra, zmq::message_
             for (const auto& ipp : mapEndpoints)
             {
                 ShowDebug(fmt::format("Message: -> rerouting to {}", ipp_to_string(ipp)));
-                queue_message(ipp, type, extra, packet);
+                message_server_send(ipp, type, extra, packet);
             }
             break;
         }
         case MSG_PT_INVITE:
         case MSG_PT_INV_RES:
+        case MSG_PLAYER_KICK:
         case MSG_DIRECT:
         case MSG_SEND_TO_ZONE:
         {
@@ -220,25 +255,17 @@ void message_server_parse(MSGSERVTYPE type, zmq::message_t* extra, zmq::message_
         }
         case MSG_MAP2WORLD_REGIONAL_EVENT:
         {
-            uint8*      data    = (uint8*)extra->data();
-            const uint8 subType = ref<uint8>(data, 0);
+            uint8* data = (uint8*)extra->data();
 
+            // Create a copy
             std::vector<uint8> bytes(data, data + extra->size());
-            try
-            {
-                auto& handler = regionalMsgHandlers.at((REGIONALMSGTYPE)subType);
-                handler->handleMessage(bytes, from_ip, from_port);
-            }
-            catch (const std::out_of_range& e)
-            {
-                ShowError(fmt::format("Handler not found: {}", e.what()));
-            }
 
+            external_processing_queue.enqueue(HandleableMessage{ bytes, from_ip, from_port });
             break;
         }
         default:
         {
-            ShowDebug(fmt::format("Message: unknown type received: {} from {}:{}", static_cast<uint8>(type), from_address, from_port));
+            ShowDebug(fmt::format("Message: unknown type received: {} from {}:{}", static_cast<uint8>(type), str(from_address), from_port));
             break;
         }
     }
@@ -249,7 +276,7 @@ void message_server_parse(MSGSERVTYPE type, zmq::message_t* extra, zmq::message_
     if (ret != SQL_ERROR)
     {
         ShowDebug(fmt::format("Message: Received message {} ({}) from {}:{}",
-                              msgTypeToStr(type), static_cast<uint8>(type), from_address, from_port));
+                              msgTypeToStr(type), static_cast<uint8>(type), str(from_address), from_port));
 
         while (sql->NextRow() == SQL_SUCCESS)
         {
@@ -264,7 +291,7 @@ void message_server_parse(MSGSERVTYPE type, zmq::message_t* extra, zmq::message_
     }
 }
 
-void message_server_listen(const bool& requestExit)
+void message_server_listen(bool const& requestExit)
 {
     while (!requestExit)
     {
@@ -345,15 +372,12 @@ void cache_zone_settings()
     std::copy(yellMapEndpointSet.begin(), yellMapEndpointSet.end(), std::back_inserter(yellMapEndpoints));
 }
 
-void message_server_init(const bool& requestExit)
+void message_server_init(bool const& requestExit)
 {
     TracySetThreadName("Message Server (ZMQ)");
 
     // Setup SQL
     sql = std::make_unique<SqlConnection>();
-
-    // Handler map registrations
-    regionalMsgHandlers[REGIONALMSGTYPE::REGIONAL_EVT_MSG_CONQUEST] = std::make_shared<ConquestSystem>();
 
     // Populate zoneSettingsCache with sql data
     cache_zone_settings();

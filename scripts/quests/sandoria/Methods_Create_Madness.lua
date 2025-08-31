@@ -5,11 +5,8 @@
 -----------------------------------
 require('scripts/globals/interaction/quest')
 require('scripts/globals/weaponskillids')
-require('scripts/globals/keyitems')
 require('scripts/globals/npc_util')
 require('scripts/globals/quests')
-require('scripts/globals/status')
-require('scripts/globals/items')
 -----------------------------------
 local southernSandOriaID = require('scripts/zones/Southern_San_dOria/IDs')
 local seaSerpentGrottoID = require('scripts/zones/Sea_Serpent_Grotto/IDs')
@@ -147,7 +144,9 @@ quest.sections =
             ['Water_Leaper'] =
             {
                 onMobDeath = function(mob, player, optParams)
-                    player:setLocalVar('killed_wsnm', 1)
+                    if player:hasKeyItem(xi.ki.MAP_TO_THE_ANNALS_OF_TRUTH) then
+                        player:setLocalVar('killed_wsnm', 1)
+                    end
                 end,
             },
         },

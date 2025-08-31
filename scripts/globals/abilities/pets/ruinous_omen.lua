@@ -8,8 +8,6 @@
 -- Version used by player summoners seems capped at ~2% except against Behemoths
 -- https://www.bluegartr.com/threads/108197-Random-Facts-Thread-Abilities?p=6003851&viewfull=1#post6003851
 ---------------------------------------------
-require("scripts/globals/settings")
-require("scripts/globals/status")
 require("scripts/globals/mobskills")
 require("scripts/globals/summon")
 ---------------------------------------------
@@ -58,7 +56,7 @@ abilityobject.onPetAbility = function(target, pet, skill, summoner)
     local totaldamage = xi.summon.avatarFinalAdjustments(damageTable.dmg, pet, skill, target, xi.attackType.MAGICAL, xi.damageType.DARK, xi.mobskills.shadowBehavior.WIPE_SHADOWS)
     target:takeDamage(totaldamage, pet, xi.attackType.MAGICAL, xi.damageType.DARK)
 
-    xi.magic.handleSMNBurstMsg(pet, target, skill, params.element, 379)
+    xi.magic.handleSMNBurstMsg(pet, target, skill, params.element, xi.msg.basic.PET_MAGIC_BURST)
 
     return totaldamage
 end

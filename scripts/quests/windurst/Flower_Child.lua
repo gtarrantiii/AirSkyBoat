@@ -4,7 +4,6 @@
 -- Log ID: 2, Quest ID: 65
 -- Ojha Rhawash : !pos -209 0 -134 239
 -----------------------------------
-require('scripts/globals/items')
 require('scripts/globals/npc_util')
 require('scripts/globals/quests')
 require('scripts/globals/zone')
@@ -93,7 +92,8 @@ quest.sections =
                     if option == 3002 then
                         if quest:complete(player) then
                             player:confirmTrade()
-                            player:setMoghouseFlag(4)
+                            local mhflag = player:getMoghouseFlag()
+                            player:setMoghouseFlag(mhflag + 0x0004)
                             player:messageSpecial(windurstWallsID.text.MOGHOUSE_EXIT)
                         end
 

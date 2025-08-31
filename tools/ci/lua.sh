@@ -74,8 +74,6 @@ global_objects=(
     Limbus
     SeasonalEvent
 
-    removeSleepEffects
-
     QUEST_AVAILABLE
     QUEST_ACCEPTED
     QUEST_COMPLETED
@@ -110,10 +108,6 @@ global_objects=(
     onTrigger
 
     SetExplorerMoogles
-
-    applyHalloweenNpcCostumes
-    isHalloweenEnabled
-    onHalloweenTrade
 
     addBonuses
     addBonusesAbility

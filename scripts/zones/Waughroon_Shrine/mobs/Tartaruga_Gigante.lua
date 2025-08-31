@@ -3,7 +3,6 @@
 --  Mob: Tartaruga Gigante
 -----------------------------------
 local ID = require("scripts/zones/Waughroon_Shrine/IDs")
-require("scripts/globals/status")
 require("scripts/globals/magic")
 require("scripts/globals/utils")
 -----------------------------------
@@ -25,12 +24,21 @@ local removables =
     xi.effect.PETRIFICATION
 }
 
+local setDmgToChange = function(mob)
+    if mob:getHP() > 2000 then
+        mob:setLocalVar("dmgToChange", mob:getHP() - 2000)
+    else
+        mob:setLocalVar("dmgToChange", 0)
+    end
+end
+
 local intoShell = function(mob)
     for _, effect in ipairs(removables) do
-        if (mob:hasStatusEffect(effect)) then
+        if mob:hasStatusEffect(effect) then
             mob:delStatusEffect(effect)
         end
     end
+
     mob:setAnimationSub(1)
     mob:setMobAbilityEnabled(false)
     mob:setAutoAttackEnabled(false)
@@ -54,7 +62,6 @@ local outOfShell = function(mob)
     mob:setMod(xi.mod.UDMGPHYS, 0)
     mob:setBehaviour(bit.band(mob:getBehaviour(), bit.bnot(xi.behavior.STANDBACK)))
     mob:setBehaviour(bit.band(mob:getBehaviour(), bit.bnot(xi.behavior.NO_TURN)))
-    mob:setLocalVar("DamageTaken", 0)
 end
 
 entity.onMobSpawn = function(mob)
@@ -73,7 +80,7 @@ entity.onMobSpawn = function(mob)
     mob:setMod(xi.mod.ATT, 446)
     mob:setMod(xi.mod.EVA, 325)
 
-    mob:setLocalVar("dmgToChange", mob:getHP() - 2000) -- 5% HP
+    setDmgToChange(mob)
     mob:setAnimationSub(2)
 end
 
@@ -84,16 +91,17 @@ entity.onMobFight = function(mob, target)
         mob:getAnimationSub() == 1 and
         (os.time() > mob:getLocalVar("changeTime") or mob:getHPP() == 100)
     then
+        setDmgToChange(mob)
         outOfShell(mob)
     end
 
     if mob:getHP() <= changeHP then
-        if (mob:getAnimationSub() == 1) then -- In shell
-            mob:setLocalVar("dmgToChange", mob:getHP() - 2000)
+        if mob:getAnimationSub() == 1 then -- In shell
+            setDmgToChange(mob)
             outOfShell(mob)
-        elseif (mob:getAnimationSub() == 2) then -- Out of shell
+        elseif mob:getAnimationSub() == 2 then -- Out of shell
+            setDmgToChange(mob)
             intoShell(mob)
-            mob:setLocalVar("dmgToChange", mob:getHP() - 2000)
         end
     end
 end
@@ -103,7 +111,6 @@ end
 
 entity.onMobDespawn = function(mob)
     mob:resetLocalVars()
-    mob:removeListener("TARTARUGA_TAKE_DAMAGE")
 end
 
 return entity

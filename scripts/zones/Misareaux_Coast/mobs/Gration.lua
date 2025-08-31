@@ -4,8 +4,6 @@
 -----------------------------------
 local ID = require("scripts/zones/Misareaux_Coast/IDs")
 mixins = { require("scripts/mixins/fomor_hate") }
-require("scripts/globals/items")
-require("scripts/globals/status")
 -----------------------------------
 local entity = {}
 
@@ -26,20 +24,8 @@ entity.onMobSpawn = function(mob)
     mob:setLocalVar("fomorHateAdj", 2)
     mob:setMod(xi.mod.MATT, 125)
     mob:setMod(xi.mod.ATT, 550)
-end
-
-entity.onMobFight = function(mob, target)
-    local enmityList = mob:getEnmityList()
-    for _, v in ipairs(enmityList) do
-        local shouldintimidate = math.random(1, 20)
-        if shouldintimidate >= 19 then
-            if v.entity:hasStatusEffect(xi.effect.INTIMIDATE) then
-                v.entity:delStatusEffectSilent(xi.effect.INTIMIDATE)
-            end
-
-            v.entity:addStatusEffectEx(xi.effect.INTIMIDATE, 0, 1, 0, 1)
-        end
-    end
+    -- add intimidation rate of 50% to players
+    mob:setMod(xi.mod.HUMANOID_KILLER, 50)
 end
 
 entity.onMobDeath = function(mob, player, optParams)

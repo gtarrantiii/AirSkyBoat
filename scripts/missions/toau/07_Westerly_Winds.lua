@@ -5,10 +5,8 @@
 -- !addmission 4 6
 -- Naja Salaheem : !pos 22.700 -8.804 -45.591 50
 -----------------------------------
-require('scripts/globals/items')
 require('scripts/globals/missions')
 require('scripts/globals/npc_util')
-require('scripts/globals/keyitems')
 require('scripts/globals/interaction/mission')
 require('scripts/globals/zone')
 -----------------------------------
@@ -62,6 +60,7 @@ mission.sections =
 
                 [3028] = function(player, csid, option, npc)
                     if mission:complete(player) then
+                        player:setCharVar('Mission[4][7]Stage', getMidnight())
                         player:delKeyItem(xi.ki.RAILLEFALS_NOTE)
                         player:setLocalVar('Mission[4][7]mustZone', 1)
                     end

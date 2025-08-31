@@ -106,6 +106,9 @@ namespace battleutils
      *                                                                       *
      ************************************************************************/
 
+    const float worldAngleMinDistance = 0.5f;
+    const uint8 worldAngleMaxDeviance = 4;
+
     void LoadSkillTable()
     {
         const char* fmtQuery = "SELECT r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13 \
@@ -389,6 +392,13 @@ namespace battleutils
         // The skill_caps table is 0-indexed, so our maximum level should one lower
         // than the size of the array.
         auto maxLevel = static_cast<uint8>(g_SkillTable.size() - 1);
+
+        // TODO: Research on mobs level 99+ is still on-going. This line can be removed once the correct formula/skilltype have been established.
+        // max indexed value and level is capped at 99 as stated above for skill_caps table
+        if (level > 99)
+        {
+            level = 99;
+        }
 
         if (level > maxLevel)
         {
@@ -780,6 +790,11 @@ namespace battleutils
         ELEMENT spikeElement = (ELEMENT)((uint8)GetSpikesDamageType(Action->spikesEffect) - (uint8)DAMAGE_TYPE::ELEMENTAL);
         int32   damage       = Action->spikesParam;
 
+        if (PDefender->getMod(Mod::SPIKES_DMG_BONUS) > 0)
+        {
+            damage *= 1 + (PDefender->getMod(Mod::SPIKES_DMG_BONUS) / 100.f);
+        }
+
         if (static_cast<SPIKES>(Action->spikesEffect) == SPIKES::SPIKE_DREAD)
         {
             // drain same as damage taken
@@ -882,67 +897,70 @@ namespace battleutils
                 spikesDamage %= 2;
             }
 
-            switch (static_cast<SPIKES>(Action->spikesEffect))
+            if (PDefender->objtype != TYPE_MOB || ((CMobEntity*)PDefender)->getMobMod(MOBMOD_AUTO_SPIKES) == 0)
             {
-                case SPIKE_BLAZE:
-                case SPIKE_ICE:
-                case SPIKE_SHOCK:
-                    PAttacker->takeDamage(spikesDamage, PDefender, ATTACK_TYPE::MAGICAL, GetSpikesDamageType(Action->spikesEffect));
-                    break;
+                switch (static_cast<SPIKES>(Action->spikesEffect))
+                {
+                    case SPIKE_BLAZE:
+                    case SPIKE_ICE:
+                    case SPIKE_SHOCK:
+                        PAttacker->takeDamage(spikesDamage, PDefender, ATTACK_TYPE::MAGICAL, GetSpikesDamageType(Action->spikesEffect));
+                        break;
 
-                case SPIKE_DREAD:
-                    if (PAttacker->m_EcoSystem == ECOSYSTEM::UNDEAD)
-                    {
-                        // is undead no effect
-                        Action->spikesEffect = (SUBEFFECT)0;
-                        return false;
-                    }
-                    else
-                    {
-                        if (PDefender->isAlive())
+                    case SPIKE_DREAD:
+                        if (PAttacker->m_EcoSystem == ECOSYSTEM::UNDEAD)
                         {
-                            auto* PEffect = PDefender->StatusEffectContainer->GetStatusEffect(EFFECT_DREAD_SPIKES);
-                            if (PEffect)
-                            {
-                                // see https://www.bg-wiki.com/ffxi/Dread_Spikes
-
-                                // Subpower is the remaining damage that can be drained. When it reaches 0 the effect ends
-                                int remainingDrain = PEffect->GetSubPower();
-                                if (remainingDrain - abs(damage) <= 0) // power absorbed from Dread Spikes takes pre-MDT etc values
-                                {
-                                    PDefender->StatusEffectContainer->DelStatusEffect(EFFECT_DREAD_SPIKES);
-                                }
-                                else
-                                {
-                                    PEffect->SetSubPower(remainingDrain - abs(damage));
-                                }
-                            }
-                            if (spikesDamage > 0) // do not add HP if spikes damage was absorbed.
-                            {
-                                Action->spikesMessage = MSGBASIC_SPIKES_EFFECT_HP_DRAIN;
-                                PDefender->addHP(spikesDamage);
-                            }
+                            // is undead no effect
+                            Action->spikesEffect = (SUBEFFECT)0;
+                            return false;
                         }
-                        PAttacker->takeDamage(spikesDamage, PDefender, ATTACK_TYPE::MAGICAL, DAMAGE_TYPE::DARK);
-                    }
-                    break;
+                        else
+                        {
+                            if (PDefender->isAlive())
+                            {
+                                auto* PEffect = PDefender->StatusEffectContainer->GetStatusEffect(EFFECT_DREAD_SPIKES);
+                                if (PEffect)
+                                {
+                                    // see https://www.bg-wiki.com/ffxi/Dread_Spikes
 
-                case SPIKE_REPRISAL:
-                    if ((Action->reaction & REACTION::BLOCK) == REACTION::BLOCK)
-                    {
-                        PAttacker->takeDamage(spikesDamage, PDefender, ATTACK_TYPE::MAGICAL, DAMAGE_TYPE::LIGHT);
-                    }
+                                    // Subpower is the remaining damage that can be drained. When it reaches 0 the effect ends
+                                    int remainingDrain = PEffect->GetSubPower();
+                                    if (remainingDrain - abs(damage) <= 0) // power absorbed from Dread Spikes takes pre-MDT etc values
+                                    {
+                                        PDefender->StatusEffectContainer->DelStatusEffect(EFFECT_DREAD_SPIKES);
+                                    }
+                                    else
+                                    {
+                                        PEffect->SetSubPower(remainingDrain - abs(damage));
+                                    }
+                                }
+                                if (spikesDamage > 0) // do not add HP if spikes damage was absorbed.
+                                {
+                                    Action->spikesMessage = MSGBASIC_SPIKES_EFFECT_HP_DRAIN;
+                                    PDefender->addHP(spikesDamage);
+                                }
+                            }
+                            PAttacker->takeDamage(spikesDamage, PDefender, ATTACK_TYPE::MAGICAL, DAMAGE_TYPE::DARK);
+                        }
+                        break;
 
-                    else
-                    {
-                        // only works on shield blocks
-                        Action->spikesEffect = (SUBEFFECT)0;
-                        return false;
-                    }
-                    break;
+                    case SPIKE_REPRISAL:
+                        if ((Action->reaction & REACTION::BLOCK) == REACTION::BLOCK)
+                        {
+                            PAttacker->takeDamage(spikesDamage, PDefender, ATTACK_TYPE::MAGICAL, DAMAGE_TYPE::LIGHT);
+                        }
 
-                default:
-                    break;
+                        else
+                        {
+                            // only works on shield blocks
+                            Action->spikesEffect = (SUBEFFECT)0;
+                            return false;
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
             }
 
             // Check for status effect proc. Todo: move to scripts soon™ after item additionalEffect refactor Teo is working on
@@ -1052,7 +1070,7 @@ namespace battleutils
             // spikes landed
             if (spikesType == SUBEFFECT_CURSE_SPIKES)
             {
-                Action->spikesMessage = 0; // log says nothing? // TODO: find "Additional Effect: Curse" message
+                Action->spikesMessage = MSGBASIC_SPIKES_ARMOR_SUBEFFECT;
                 Action->spikesParam   = EFFECT_CURSE;
             }
             else
@@ -1586,6 +1604,12 @@ namespace battleutils
         hitrate = hitrate + ((acc - eva) / 2) - (PDefender->GetMLevel() - PAttacker->GetMLevel()) * 2;
 
         uint8 finalhitrate = std::clamp(hitrate, 20, 95);
+
+        // Check to see if distance is greater than 25 and force hitrate to be 0
+        if (distance(PAttacker->loc.p, PDefender->loc.p) > 25)
+        {
+            finalhitrate = 0;
+        }
         return finalhitrate;
     }
 
@@ -1950,14 +1974,14 @@ namespace battleutils
     {
         CItemWeapon* PWeapon = GetEntityWeapon(PDefender, SLOT_MAIN);
         if (((PDefender->objtype == TYPE_PC && PWeapon != nullptr && PWeapon->getID() != 0 && PWeapon->getID() != 65535 && PWeapon->getSkillType() != SKILL_HAND_TO_HAND) ||
-             (PDefender->objtype == TYPE_MOB && PDefender->m_EcoSystem == ECOSYSTEM::BEASTMAN && PDefender->GetMJob() != JOB_MNK && PDefender->isInDynamis())) &&
+             (PDefender->objtype == TYPE_MOB && PDefender->m_EcoSystem == ECOSYSTEM::BEASTMAN && JOBS_WITH_PARRY_SKILL.count(PDefender->GetMJob()) > 0 && PDefender->isInDynamis())) &&
             PDefender->PAI->IsEngaged())
         {
             float        defender_parry_skill = (float)(PDefender->GetSkill(SKILL_PARRY) + PDefender->getMod(Mod::PARRY) + PWeapon->getILvlParry());
             CItemWeapon* weapon               = GetEntityWeapon(PAttacker, SLOT_MAIN);
             uint16       attackSkill          = PAttacker->GetSkill((SKILLTYPE)(weapon ? weapon->getSkillType() : 0));
 
-            int parryRate = std::clamp<int>((int)(20.0f + (defender_parry_skill - attackSkill) / 8.0f), 5, 30);
+            int parryRate = std::clamp<int>((int)(17.0f + (defender_parry_skill - attackSkill) / 8.0f), 5, 30);
 
             // Issekigan grants parry rate bonus. From best available data, if you already capped out at 25% parry it grants another 25% bonus for ~50%
             // parry rate
@@ -2102,11 +2126,12 @@ namespace battleutils
             if (isBlocked)
             {
                 uint8 absorb = 100;
-                if (PDefender->m_Weapons[SLOT_SUB]->IsShield())
+                if (const auto PChar = dynamic_cast<CCharEntity*>(PDefender))
                 {
-                    if (PDefender->objtype == TYPE_PC)
+                    CItemEquipment* slotSub = PChar->getEquip(SLOT_SUB);
+                    if (slotSub && slotSub->IsShield())
                     {
-                        absorb = std::clamp(100 - PDefender->m_Weapons[SLOT_SUB]->getShieldAbsorption(), 0, 100);
+                        absorb = std::clamp(100 - slotSub->getShieldAbsorption(), 0, 100);
                         absorb -= PDefender->getMod(Mod::SHIELD_DEF_BONUS); // Include Shield Defense Bonus in absorb amount
 
                         // Shield Mastery
@@ -2534,6 +2559,9 @@ namespace battleutils
             // Do we get TP for damaging spells?
             int16 tp = battleutils::CalculateSpellTP(PAttacker, PSpell);
             PAttacker->addTP(tp);
+
+            // Targets of damaging spells gain 50 tp
+            PDefender->addTP((uint16)50);
         }
 
         return damage;
@@ -2584,7 +2612,6 @@ namespace battleutils
         }
         else
         {
-            // ShowDebug("Accuracy mod before direction checks: %d", offsetAccuracy);
             // Check For Ambush Merit - Melee
             if (PAttacker->objtype == TYPE_PC && (charutils::hasTrait((CCharEntity*)PAttacker, TRAIT_AMBUSH)) && behind(PAttacker->loc.p, PDefender->loc.p, 64))
             {
@@ -2753,10 +2780,12 @@ namespace battleutils
                 critHitRate += PCharAttacker->PMeritPoints->GetMeritValue(MERIT_CRIT_HIT_RATE, PCharAttacker);
 
                 // Add Fencer crit hit rate
-                CItemWeapon* PMain = dynamic_cast<CItemWeapon*>(PCharAttacker->m_Weapons[SLOT_MAIN]);
-                CItemWeapon* PSub  = dynamic_cast<CItemWeapon*>(PCharAttacker->m_Weapons[SLOT_SUB]);
+                CItemWeapon*    PMain      = dynamic_cast<CItemWeapon*>(PCharAttacker->m_Weapons[SLOT_MAIN]);
+                CItemEquipment* PSub       = PCharAttacker->getEquip(SLOT_SUB);
+                CItemWeapon*    PSubWeapon = dynamic_cast<CItemWeapon*>(PCharAttacker->m_Weapons[SLOT_SUB]);
+
                 if (PMain && !PMain->isTwoHanded() && !PMain->isHandToHand() &&
-                    (!PSub || PSub->getSkillType() == SKILL_NONE || PCharAttacker->m_Weapons[SLOT_SUB]->IsShield()))
+                    (!PSub || (PSubWeapon && PSubWeapon->getSkillType() == SKILL_NONE) || PSub->IsShield()))
                 {
                     critHitRate += PCharAttacker->getMod(Mod::FENCER_CRITHITRATE);
                 }
@@ -2802,31 +2831,32 @@ namespace battleutils
         int32 attackerDex = PAttacker->DEX();
         int32 defenderAgi = PDefender->AGI();
         int32 dDex        = attackerDex - defenderAgi;
-        int32 dDexAbs     = std::abs(dDex);
+        // only care for values between 0 and 50
+        int32 dDexClamp = std::clamp(dDex, 0, 50);
 
         // Default to +0 crit rate for a delta of 0-6
         int32 critRate = 0;
-        if (dDexAbs > 39)
+        if (dDexClamp > 39)
         {
             // 40-50: (dDEX-35)
-            critRate = dDexAbs - 35;
+            critRate = dDexClamp - 35;
         }
-        else if (dDexAbs > 29)
+        else if (dDexClamp > 29)
         {
             // 30-39: +4
             critRate = 4;
         }
-        else if (dDexAbs > 19)
+        else if (dDexClamp > 19)
         {
             // 20-29: +3
             critRate = 3;
         }
-        else if (dDexAbs > 13)
+        else if (dDexClamp > 13)
         {
             // 14-19: +2
             critRate = 2;
         }
-        else if (dDexAbs > 6)
+        else if (dDexClamp > 6)
         {
             critRate = 1;
         }
@@ -4506,168 +4536,119 @@ namespace battleutils
     }
 
     /*
-     * Find if any party members are in position for trick attack.  Do this by making a narrow triangle:
-     *  one endpoint at the mob, and the other two endpoints being equidistant from the TA user, perpendicular to
-     *  the line between the mob and the TA user.  Find the slope of the line between the TA user and the mob, and
-     *  decide whether to use x or z as the dependent variable (to avoid big numbers and divide by 0 errors on
-     *  vertical slopes).  Using this slope, we can find the angle of the perpendicular line to the x or z line
-     *  (depending on what the dependent var is), and using that angle, the disassembled x and z components to that
-     *  line.  Divide those by 2 for a half yalm length line for each side of the base of the triangle, and we get
-     *  the min and max values for x/z around the TA user.  Now it's simply a matter of first: making sure the
-     *  TA target is closer than the TA user, and that the TA targets x and z coordinates fall within the triangle
-     *  we made.  Using the min/max points and the mobs coordinate, we can construct min and max slopes, check that
-     *  the x or z coordinates are between the mob and player, and finally calculate where the z coordinate should
-     *  be based on the users x coordinate (or the other way around in a z dependent scenario) and check if the
-     *  actual z coordinate is between those two values.
+        pass result of worldAngle(anchorEntity, firstEntity) instead of calculating everytime to allow TA to be more efficient
+        Note the order of worldAngle calls, the anchor must be first in all comparisons
+        Calculates world angle between other entity and anchor entity,
+        then determines if the difference of those angles is within acceptable range for moves that require the three to be "in a straight line"
+        Used for Trick Attack and Cover: separate checks for distance/party membership must be done to confirm eligability
+    */
+    inline bool areInLine(uint8 firstEntityWorldAngle, CBattleEntity* anchorEntity, CBattleEntity* otherEntity)
+    {
+        // X-degree angle threshold, centered on the firstPlayer's world angle
+        // X = 10 => 10/2 * 255 / 360 ~ 3.5 rotation diff, rounded to 4 which really gives X~11.3
+        int16 angleDiff = angleDifference(firstEntityWorldAngle, worldAngle(anchorEntity->loc.p, otherEntity->loc.p));
+
+        // Useful for debugging if trick attack/cover aren't reliably calculating eligability, but chatty otherwise
+        // ShowDebug("InLine check angleDiff: %d\n", angleDiff);
+
+        return std::abs(angleDiff) <= worldAngleMaxDeviance;
+    }
+
+    /*
+     *  Find if any party members are in position for trick attack.  Do this by comparing the world angle between:
+     *  1. the TA user and the TA target
+     *  2. the TA user and the Mob
+     *  First, build a list of players that are closer to the mob than the TA user,
+     *   then sort by distance and choose the first that succeeds in meeting the criteria of areInline function
      */
 
     CBattleEntity* getAvailableTrickAttackChar(CBattleEntity* taUser, CBattleEntity* PMob)
     {
+        TracyZoneScoped;
         if (!taUser->StatusEffectContainer->HasStatusEffect(EFFECT_TRICK_ATTACK))
         {
             return nullptr;
         }
 
-        float taUserX = taUser->loc.p.x;
-        float taUserZ = taUser->loc.p.z;
-        float mobX    = PMob->loc.p.x;
-        float mobZ    = PMob->loc.p.z;
-
-        float xdif       = taUserX - mobX;
-        float zdif       = taUserZ - mobZ;
-        float slope      = 0;
-        float maxSlope   = 0;
-        float minSlope   = 0;
-        bool  zDependent = true; // using a slope where z is dependent var
-
-        if (abs(xdif) <= abs(zdif))
-        {
-            slope = xdif / zdif;
-
-            float angle = (float)atan((double)1) * 2 - atan(slope);
-
-            float zoffset   = cos(angle) / 2;
-            float xoffset   = sin(angle) / 2;
-            float maxXpoint = taUserX + xoffset;
-            float maxZpoint = taUserZ - zoffset;
-            float minXpoint = taUserX - xoffset;
-            float minZpoint = taUserZ + zoffset;
-            maxSlope        = ((maxXpoint - mobX) / (maxZpoint - mobZ));
-            minSlope        = ((minXpoint - mobX) / (minZpoint - mobZ));
-            zDependent      = false;
-        }
-        else
-        {
-            slope = zdif / xdif;
-
-            float angle = (float)atan((double)1) * 2 - atan(slope);
-
-            float xoffset   = cos(angle) / 2;
-            float zoffset   = sin(angle) / 2;
-            float maxXpoint = taUserX - xoffset;
-            float maxZpoint = taUserZ + zoffset;
-            float minXpoint = taUserX + xoffset;
-            float minZpoint = taUserZ - zoffset;
-            maxSlope        = (maxZpoint - mobZ) / (maxXpoint - mobX);
-            minSlope        = (minZpoint - mobZ) / (minXpoint - mobX);
-        }
-
-        // Determines if a given party/alliance member is a valid candidate for Trick Attack
-        auto isValidTrickAttackHelper = [&](CBattleEntity* PEntity) -> bool
-        {
-            // Dead PEntity should not be TA-able
-            if (PEntity->isDead())
-            {
-                return false;
-            }
-            if (taUser->id != PEntity->id && distance(PEntity->loc.p, PMob->loc.p) <= distance(taUser->loc.p, PMob->loc.p))
-            {
-                float memberXdif = PEntity->loc.p.x - mobX;
-                float memberZdif = PEntity->loc.p.z - mobZ;
-                if (zDependent)
-                {
-                    if ((memberZdif <= memberXdif * maxSlope) && (memberZdif >= memberXdif * minSlope))
-                    {
-                        // finally found a TA partner
-                        return true;
-                    }
-                }
-                else
-                {
-                    if ((memberXdif <= memberZdif * maxSlope) && (memberXdif >= memberZdif * minSlope))
-                    {
-                        // finally found a TA partner
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        };
-
-        auto checkTrusts = [&](CBattleEntity* PEntity) -> CBattleEntity*
-        {
-            if (auto* PChar = dynamic_cast<CCharEntity*>(PEntity))
-            {
-                for (auto* PTrust : PChar->PTrusts)
-                {
-                    if (isValidTrickAttackHelper(PTrust))
-                    {
-                        return PTrust;
-                    }
-                }
-            }
-
-            return nullptr;
-        };
+        // angle and distance between mob and TA user
+        uint8                                         angleTAmob = worldAngle(PMob->loc.p, taUser->loc.p);
+        auto                                          distTAmob  = distance(taUser->loc.p, PMob->loc.p);
+        std::vector<std::pair<float, CBattleEntity*>> taTargetList;
 
         if (taUser->PParty != nullptr)
         {
+            std::vector<CParty*> taPartyList;
             if (taUser->PParty->m_PAlliance != nullptr)
             {
-                for (auto& a : taUser->PParty->m_PAlliance->partyList)
-                {
-                    for (std::size_t i = 0; i < a->members.size(); ++i)
-                    {
-                        CBattleEntity* member = a->members.at(i);
-                        if (isValidTrickAttackHelper(member))
-                        {
-                            return member;
-                        }
-
-                        if (auto* potentialTrust = checkTrusts(member))
-                        {
-                            return potentialTrust;
-                        }
-                    }
-                }
+                taPartyList = taUser->PParty->m_PAlliance->partyList;
             }
             else
-            { // No alliance
-                for (auto member : taUser->PParty->members)
+            {
+                taPartyList.emplace_back(taUser->PParty);
+            }
+
+            // Collect all potential TA targets who are closer to the mob than the TA user
+            for (auto&& party : taPartyList)
+            {
+                for (auto&& member : party->members)
                 {
-                    if (isValidTrickAttackHelper(member))
+                    float distTAtarget = distance(member->loc.p, PMob->loc.p);
+                    // require closer target not be closer than .5 yalms (.5*.5=.25 distsquared) to mob
+                    if (distTAtarget >= worldAngleMinDistance && distTAtarget < distTAmob)
                     {
-                        return member;
+                        taTargetList.emplace_back(distTAtarget, member);
                     }
 
-                    if (auto* potentialTrust = checkTrusts(member))
+                    if (auto* PChar = dynamic_cast<CCharEntity*>(member))
                     {
-                        return potentialTrust;
+                        for (auto* PTrust : PChar->PTrusts)
+                        {
+                            float distTAtarget = distance(PTrust->loc.p, PMob->loc.p);
+                            // require closer target not be closer than .5 yalms (.5*.5=.25 distsquared) to mob
+                            if (distTAtarget >= worldAngleMinDistance && distTAtarget < distTAmob)
+                            {
+                                taTargetList.emplace_back(distTAtarget, PTrust);
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Check fellow for TA target
+        // Check TA user's fellow
+        /*
         if (auto* PChar = dynamic_cast<CCharEntity*>(taUser))
         {
-            if (PChar->m_PFellow)
+            if (PChar->PFellow)
             {
-                if (auto* fellow = dynamic_cast<CBattleEntity*>(PChar->m_PFellow))
+                if (auto* fellow = dynamic_cast<CBattleEntity*>(PChar->PFellow))
                 {
-                    if (isValidTrickAttackHelper(fellow))
-                        return fellow;
+                    float distTAtarget = distance(fellow->loc.p, PMob->loc.p);
+                    // require closer target not be closer than .5 yalms (.5*.5=.25 distsquared) to mob
+                    if (distTAtarget >= worldAngleMinDistance && distTAtarget < distTAmob)
+                    {
+                        taTargetList.emplace_back(distTAtarget, fellow);
+                    }
+                }
+            }
+        }
+        */
+
+        if (!taTargetList.empty())
+        {
+            // sorts by distance then by pointer id (only if floats are equal)
+            std::sort(taTargetList.begin(), taTargetList.end());
+            for (auto const& [dist, potentialTAtarget] : taTargetList)
+            {
+                if (taUser->id == potentialTAtarget->id || // can't TA self
+                    potentialTAtarget->isDead())           // Dead entity should not be TA-able
+                {
+                    continue;
+                }
+
+                if (areInLine(angleTAmob, PMob, potentialTAtarget))
+                {
+                    return potentialTAtarget;
                 }
             }
         }
@@ -5284,10 +5265,6 @@ namespace battleutils
             {
                 PEntity->PAI->Disengage();
             }
-            if (PEntity->isDead())
-            {
-                PEntity->Die();
-            }
             PEntity->updatemask |= UPDATE_ALL_CHAR;
         }
     }
@@ -5313,8 +5290,9 @@ namespace battleutils
     void ClaimMob(CBattleEntity* PDefender, CBattleEntity* PAttacker, bool passing)
     {
         TracyZoneScoped;
-
-        if (PDefender == nullptr || (PDefender && PDefender->objtype != ENTITYTYPE::TYPE_MOB)) // Do not try to claim anything but mobs (trusts, pets, players don't count)
+        if (PDefender == nullptr ||
+            (PDefender && PDefender->objtype != ENTITYTYPE::TYPE_MOB) ||                                                   // Do not try to claim anything but mobs (trusts, pets, players don't count)
+            (PDefender && PDefender->objtype == ENTITYTYPE::TYPE_MOB && PDefender->allegiance == ALLEGIANCE_TYPE::PLAYER)) // Added mobs that are in allied with player
         {
             return;
         }
@@ -6202,7 +6180,7 @@ namespace battleutils
 
     bool DrawIn(CBattleEntity* PTarget, CMobEntity* PMob, float offset, uint8 drawInRange, uint16 maximumReach, bool includeParty, bool includeDeadAndMount)
     {
-        if (std::chrono::time_point_cast<std::chrono::seconds>(server_clock::now()).time_since_epoch().count() - PMob->GetLocalVar("DrawInTime") < 2)
+        if ((std::chrono::time_point_cast<std::chrono::seconds>(server_clock::now()).time_since_epoch().count() - PMob->GetLocalVar("DrawInTime")) < 2)
         {
             return false;
         }
@@ -6682,6 +6660,10 @@ namespace battleutils
                 }
             }
         }
+        else if (PSpell->getSpellGroup() == SPELLGROUP_SUMMONING)
+        {
+            cast -= 1000 * PEntity->getMod(Mod::SUMMONING_MAGIC_CAST);
+        }
         else if (PSpell->getSpellGroup() == SPELLGROUP_SONG)
         {
             if (PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_PIANISSIMO))
@@ -6843,14 +6825,15 @@ namespace battleutils
             {
                 recast = static_cast<int32>(recast * 0.5f);
             }
+
             // The following modifiers are not multiplicative - as such they must be applied last.
-            // ShowDebug("Recast before reduction: %u", recast);
             if (PEntity->objtype == TYPE_PC)
             {
                 if (PSpell->getID() == SpellID::Magic_Finale) // apply Finale recast merits
                 {
                     recast -= ((CCharEntity*)PEntity)->PMeritPoints->GetMeritValue(MERIT_FINALE_RECAST, (CCharEntity*)PEntity) * 1000;
                 }
+
                 if (PSpell->getID() == SpellID::Foe_Lullaby || PSpell->getID() == SpellID::Foe_Lullaby_II || PSpell->getID() == SpellID::Horde_Lullaby ||
                     PSpell->getID() == SpellID::Horde_Lullaby_II) // apply Lullaby recast merits
                 {
@@ -6858,7 +6841,6 @@ namespace battleutils
                 }
             }
             recast -= PEntity->getMod(Mod::SONG_RECAST_DELAY) * 1000;
-            // ShowDebug("Recast after merit reduction: %u", recast);
         }
 
         if (PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_COMPOSURE))
@@ -6871,7 +6853,7 @@ namespace battleutils
             recast = static_cast<int32>(recast * 1.5f);
         }
 
-        recast = std::max<int32>(recast, static_cast<int32>(base * 0.2f));
+        recast = std::max<int32>(recast, static_cast<int32>(base * 0.5f)); // Haste Cap in Era - Was changes to 80% (0.2f) in 2011
 
         // Light/Dark arts recast bonus/penalties applies after other bonuses
         if (PSpell->getSpellGroup() == SPELLGROUP_BLACK)
@@ -6897,13 +6879,13 @@ namespace battleutils
                 recast = static_cast<int32>(recast * ((100.0f + PEntity->getMod(Mod::BLACK_MAGIC_RECAST)) / 100.0f));
             }
 
-            recast = std::max<int32>(recast, static_cast<int32>(base * 0.2f)); // recap to 80%
+            recast = std::max<int32>(recast, static_cast<int32>(base * 0.5f)); // Haste Cap in Era - Was changes to 80% (0.2f) in 2011
 
             // https://www.bg-wiki.com/ffxi/Alacrity
             if (PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_ALACRITY))
             {
                 recast = static_cast<int32>(recast * 0.60);                        // 40% reduction from Alacrity alone
-                recast = std::max<int32>(recast, static_cast<int32>(base * 0.2f)); // recap to 80%
+                recast = std::max<int32>(recast, static_cast<int32>(base * 0.5f)); // Haste Cap in Era - Was changes to 80% (0.2f) in 2011
 
                 // Only apply bonus mod if the spell element matches the weather, this is allowed to go over the 80% cap to a 90% cap.
                 if (battleutils::WeatherMatchesElement(battleutils::GetWeather(PEntity, false), static_cast<uint8>(PSpell->getElement())))
@@ -6911,7 +6893,7 @@ namespace battleutils
                     uint16 bonus = PEntity->getMod(Mod::ALACRITY_CELERITY_EFFECT);
 
                     recast = static_cast<int32>(recast * ((100 - bonus) / 100.0f));
-                    recast = std::max<int32>(recast, static_cast<int32>(base * 0.1f)); // cap to 90% reduction
+                    recast = std::max<int32>(recast, static_cast<int32>(base * 0.4f)); // cap to 60% reduction - Haste Cap in Era - Was changes to 80% (0.2f) in 2011
                 }
             }
         }
@@ -6939,13 +6921,13 @@ namespace battleutils
                 recast = static_cast<int32>(recast * ((100.0f + PEntity->getMod(Mod::WHITE_MAGIC_RECAST)) / 100.0f));
             }
 
-            recast = std::max<int32>(recast, static_cast<int32>(base * 0.2f)); // recap to 80%
+            recast = std::max<int32>(recast, static_cast<int32>(base * 0.5f)); // Haste Cap in Era - Was changes to 80% (0.2f) in 2011
 
             // https://www.bg-wiki.com/ffxi/Celerity
             if (PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_CELERITY))
             {
                 recast = static_cast<int32>(recast * 0.60);                        // 40% reduction from Celerity alone
-                recast = std::max<int32>(recast, static_cast<int32>(base * 0.2f)); // recap to 80%
+                recast = std::max<int32>(recast, static_cast<int32>(base * 0.5f)); // Haste Cap in Era - Was changes to 80% (0.2f) in 2011
 
                 // Only apply bonus mod if the spell element matches the weather, this is allowed to go over the 80% cap to a 90% cap.
                 if (battleutils::WeatherMatchesElement(battleutils::GetWeather(PEntity, false), static_cast<uint8>(PSpell->getElement())))
@@ -6953,7 +6935,7 @@ namespace battleutils
                     uint16 bonus = PEntity->getMod(Mod::ALACRITY_CELERITY_EFFECT);
 
                     recast = static_cast<int32>(recast * ((100 - bonus) / 100.0f));
-                    recast = std::max<int32>(recast, static_cast<int32>(base * 0.1f)); // cap to 90% reduction
+                    recast = std::max<int32>(recast, static_cast<int32>(base * 0.4f)); // Haste Cap in Era - Was changes to 80% (0.2f) in 2011
                 }
             }
         }
@@ -7019,10 +7001,12 @@ namespace battleutils
                 }
 
                 // Add Fencer TP Bonus
-                CItemWeapon* PMain = dynamic_cast<CItemWeapon*>(PEntity->m_Weapons[SLOT_MAIN]);
-                CItemWeapon* PSub  = dynamic_cast<CItemWeapon*>(PEntity->m_Weapons[SLOT_SUB]);
+                CItemWeapon*    PMain      = dynamic_cast<CItemWeapon*>(PChar->m_Weapons[SLOT_MAIN]);
+                CItemEquipment* PSub       = PChar->getEquip(SLOT_SUB);
+                CItemWeapon*    PSubWeapon = dynamic_cast<CItemWeapon*>(PChar->m_Weapons[SLOT_SUB]);
+
                 if (PMain && !PMain->isTwoHanded() && !PMain->isHandToHand() &&
-                    (!PSub || PSub->getSkillType() == SKILL_NONE || PEntity->m_Weapons[SLOT_SUB]->IsShield()))
+                    (!PSub || (PSubWeapon && PSubWeapon->getSkillType() == SKILL_NONE) || PSub->IsShield()))
                 {
                     tp += PEntity->getMod(Mod::FENCER_TP_BONUS);
                 }
@@ -7043,7 +7027,7 @@ namespace battleutils
                 uint8 slot = PChar->equip[SLOT_AMMO];
                 uint8 loc  = PChar->equipLoc[SLOT_AMMO];
                 charutils::UnequipItem(PChar, SLOT_AMMO);
-                charutils::SaveCharEquip(PChar);
+                PChar->RequestPersist(CHAR_PERSIST::EQUIP);
                 charutils::UpdateItem(PChar, loc, slot, -quantity);
                 PChar->pushPacket(new CInventoryFinishPacket());
                 return true;
@@ -7251,73 +7235,17 @@ namespace battleutils
 
             if (PCoverAbilityUser != nullptr)
             {
-                float coverAbilityTargetX = PCoverAbilityTarget->loc.p.x;
-                float coverAbilityTargetZ = PCoverAbilityTarget->loc.p.z;
-                float mobX                = PMob->loc.p.x;
-                float mobZ                = PMob->loc.p.z;
+                // using same variable names as trick attack function, for consistent understanding
+                uint8 angleTAmob = worldAngle(PMob->loc.p, PCoverAbilityUser->loc.p);
+                float distTAmob  = distance(PCoverAbilityUser->loc.p, PMob->loc.p);
 
-                float xdif       = coverAbilityTargetX - mobX;
-                float zdif       = coverAbilityTargetZ - mobZ;
-                float slope      = 0;
-                float maxSlope   = 0;
-                float minSlope   = 0;
-                bool  zDependent = true; // using a slope where z is dependent var
-
-                if (abs(xdif) <= abs(zdif))
+                // check if cover user is within melee range and that cover target is in-line behind
+                if (distTAmob <= static_cast<float>(PMob->GetMeleeRange()) &&        // make sure cover user is within melee range
+                    distTAmob >= worldAngleMinDistance &&                            // require closer target not be closer than .5 yalms (.5*.5=.25 distsquared) to mob
+                    distTAmob < distance(PCoverAbilityTarget->loc.p, PMob->loc.p) && // make sure cover user is closer to the mob than cover target
+                    areInLine(angleTAmob, PMob, PCoverAbilityTarget))
                 {
-                    slope = xdif / zdif;
-
-                    float angle = (float)atan((double)1) * 2 - atan(slope);
-
-                    float zoffset   = cos(angle) / 2;
-                    float xoffset   = sin(angle) / 2;
-                    float maxXpoint = mobX + xoffset;
-                    float maxZpoint = mobZ - zoffset;
-                    float minXpoint = mobX - xoffset;
-                    float minZpoint = mobZ + zoffset;
-
-                    maxSlope = ((maxXpoint - coverAbilityTargetX) / (maxZpoint - coverAbilityTargetZ));
-                    minSlope = ((minXpoint - coverAbilityTargetX) / (minZpoint - coverAbilityTargetZ));
-
-                    zDependent = false;
-                }
-                else
-                {
-                    slope = zdif / xdif;
-
-                    float angle = (float)atan((double)1) * 2 - atan(slope);
-
-                    float xoffset   = cos(angle) / 2;
-                    float zoffset   = sin(angle) / 2;
-                    float maxXpoint = mobX - xoffset;
-                    float maxZpoint = mobZ + zoffset;
-                    float minXpoint = mobX + xoffset;
-                    float minZpoint = mobZ - zoffset;
-
-                    maxSlope = (maxZpoint - coverAbilityTargetZ) / (maxXpoint - coverAbilityTargetX);
-                    minSlope = (minZpoint - coverAbilityTargetZ) / (minXpoint - coverAbilityTargetX);
-                }
-
-                if (distance(PCoverAbilityUser->loc.p, PMob->loc.p) <= (float)PMob->GetMeleeRange() && // make sure cover user is within melee range
-                    distance(PCoverAbilityUser->loc.p, PMob->loc.p) <=
-                        distance(PCoverAbilityTarget->loc.p, PMob->loc.p)) // make sure cover user is closer to the mob than cover target
-                {
-                    float coverAbilityUserXdif = PCoverAbilityUser->loc.p.x - coverAbilityTargetX;
-                    float coverAbilityUserZdif = PCoverAbilityUser->loc.p.z - coverAbilityTargetZ;
-                    if (zDependent)
-                    {
-                        if ((coverAbilityUserZdif <= coverAbilityUserXdif * maxSlope) && (coverAbilityUserZdif >= coverAbilityUserXdif * minSlope))
-                        {
-                            return PCoverAbilityUser;
-                        }
-                    }
-                    else
-                    {
-                        if ((coverAbilityUserXdif <= coverAbilityUserZdif * maxSlope) && (coverAbilityUserXdif >= coverAbilityUserZdif * minSlope))
-                        {
-                            return PCoverAbilityUser;
-                        }
-                    }
+                    return PCoverAbilityUser;
                 }
             }
         }

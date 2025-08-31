@@ -310,6 +310,12 @@ int16 CBattleEntity::GetWeaponDelay(bool tp)
     TracyZoneScoped;
     if (StatusEffectContainer->HasStatusEffect(EFFECT_HUNDRED_FISTS) && !tp)
     {
+        if (this->objtype == ENTITYTYPE::TYPE_MOB)
+        {
+            // Captures show mobs swing around 700 delay under hundered fists
+            return 700;
+        }
+
         return 1700;
     }
     uint16 WeaponDelay = 9999;
@@ -361,9 +367,9 @@ int16 CBattleEntity::GetWeaponDelay(bool tp)
     return WeaponDelay;
 }
 
-uint8 CBattleEntity::GetMeleeRange() const
+float CBattleEntity::GetMeleeRange() const
 {
-    return m_ModelRadius + 3;
+    return m_ModelRadius + 3.0f;
 }
 
 int16 CBattleEntity::GetRangedWeaponDelay(bool tp)
@@ -978,27 +984,31 @@ uint16 CBattleEntity::DEF()
         return std::clamp(DEF + defModApplicatble, 0, 65535);
     }
 
-    return std::clamp(DEF + (DEF * m_modStat[Mod::DEFP] / 100) + std::min<int16>((DEF * m_modStat[Mod::FOOD_DEFP] / 100), m_modStat[Mod::FOOD_DEF_CAP]), 0, 65535);
+    return std::clamp(DEF + (DEF * m_modStat[Mod::DEFP] / 100) + std::min<int16>((DEF * m_modStat[Mod::FOOD_DEFP] / 100), m_modStat[Mod::FOOD_DEF_CAP]), 0, 65535); // Clamp to stop underflows of defense
 }
 
 uint16 CBattleEntity::EVA()
 {
-    int16 evasion = GetSkill(SKILL_EVASION);
+    int16 evasion = 1;
 
-    // This check is for Players Only
-    if (evasion > 200)
-    { // Evasion skill is 0.9 evasion post-200
-        evasion = (int16)(200 + (evasion - 200) * 0.9);
-    }
-
-    // Mobs do not have SKILL_EVASION. Their stats are set in the mobutils.cpp. This will correctly set their evasion
     if (this->objtype == TYPE_MOB || this->objtype == TYPE_PET)
     {
-        int16 evasionMob = (200 + (m_modStat[Mod::EVA] - 200) * 0.9);
-        return std::max(0, (evasionMob + AGI() / 2));
+        evasion = m_modStat[Mod::EVA]; // Mobs and pets base evasion is based off the EVA mod
+    }
+    else // If it is a player then evasion = SKILL_EVASION
+    {
+        evasion = GetSkill(SKILL_EVASION);
+
+        // Player only evasion calculation
+        if (evasion > 200)
+        {
+            evasion = 200 + (evasion - 200) * 0.9;
+        }
     }
 
-    return std::max(0, (m_modStat[Mod::EVA] + evasion + AGI() / 2));
+    evasion += AGI() / 2;
+
+    return std::max(1, evasion + (this->objtype == TYPE_MOB || this->objtype == TYPE_PET ? 0 : m_modStat[Mod::EVA])); // The mod for a pet or mob is already calclated in the above so return 0
 }
 
 /************************************************************************
@@ -1796,7 +1806,8 @@ void CBattleEntity::OnCastFinished(CMagicState& state, action_t& action)
         }
 
         // TODO: this is really hacky and should eventually be moved into lua, and spellFlags should probably be in the spells table..
-        if (PSpell->canHitShadow() && aoeType == SPELLAOE_NONE && battleutils::IsAbsorbByShadow(PTarget, this) && !(PSpell->getFlag() & SPELLFLAG_IGNORE_SHADOWS))
+        // Also need to have IsAbsorbByShadow last in conditional because that has side effects including removing a shadow
+        if (PSpell->canHitShadow() && aoeType == SPELLAOE_NONE && !(PSpell->getFlag() & SPELLFLAG_IGNORE_SHADOWS) && battleutils::IsAbsorbByShadow(PTarget, this))
         {
             // take shadow
             msg                = MSGBASIC_SHADOW_ABSORB;
@@ -2066,8 +2077,10 @@ bool CBattleEntity::OnAttack(CAttackState& state, action_t& action)
 
     /////////////////////////////////////////////////////////////////////////
     //  Start of the attack loop.
+    //  Make sure our target is alive on each iteration to not overkill;
+    //  And make sure we aren't dead in case we died to a counter.
     /////////////////////////////////////////////////////////////////////////
-    while (attackRound.GetAttackSwingCount() && !(PTarget->isDead()))
+    while (attackRound.GetAttackSwingCount() && PTarget->isAlive() && this->isAlive())
     {
         actionTarget_t& actionTarget = list.getNewActionTarget();
         // Reference to the current swing.

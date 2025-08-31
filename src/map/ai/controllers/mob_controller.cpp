@@ -202,7 +202,7 @@ void CMobController::TryLink()
     if (!PMob->PMaster)
     {
         // Handle monster linking if they are close enough
-        if (PMob->PParty != nullptr)
+        if (PMob->PParty != nullptr && !PMob->getMobMod(MOBMOD_ONE_WAY_LINKING))
         {
             for (auto& member : PMob->PParty->members)
             {
@@ -212,7 +212,7 @@ void CMobController::TryLink()
                     continue;
                 }
 
-                if (PPartyMember->PAI->IsRoaming() && PPartyMember->CanLink(&PMob->loc.p, PMob->getMobMod(MOBMOD_SUPERLINK)))
+                if (PPartyMember->isAlive() && PPartyMember->PAI->IsRoaming() && PPartyMember->CanLink(&PMob->loc.p, PMob->getMobMod(MOBMOD_SUPERLINK)))
                 {
                     PPartyMember->PEnmityContainer->AddBaseEnmity(PTarget);
 
@@ -467,9 +467,9 @@ bool CMobController::TryCastSpell()
 {
     TracyZoneScoped;
 
-    if (PMob->GetBattleTarget() != nullptr)
+    if (PTarget != nullptr)
     {
-        if (PMob->GetBattleTarget()->StatusEffectContainer->HasStatusEffect(EFFECT_ALL_MISS) && PMob->GetBattleTarget()->StatusEffectContainer->GetStatusEffect(EFFECT_ALL_MISS)->GetPower() == 2) // Handles Super Jump
+        if (PTarget->StatusEffectContainer->HasStatusEffect(EFFECT_ALL_MISS) && PTarget->StatusEffectContainer->GetStatusEffect(EFFECT_ALL_MISS)->GetPower() == 2) // Handles Super Jump
         {
             return false;
         }
@@ -481,13 +481,13 @@ bool CMobController::TryCastSpell()
     }
 
     // Having a distance check here (before the check in magic_state) prevents the mob from standing still during chainspell
-    if (distance(PMob->loc.p, PMob->GetBattleTarget()->loc.p) > 28.5f)
+    if (PTarget != nullptr && distance(PMob->loc.p, PTarget->loc.p) > 28.5f)
     {
         return false;
     }
 
     // Control for worms to only cast when target is out of melee range
-    if (PMob->m_roamFlags & ROAMFLAG_WORM && distance(PMob->loc.p, PMob->GetBattleTarget()->loc.p) <= 3)
+    if (PTarget != nullptr && PMob->m_roamFlags & ROAMFLAG_WORM && distance(PMob->loc.p, PTarget->loc.p) <= 3)
     {
         return false;
     }
@@ -766,8 +766,17 @@ void CMobController::Move()
         }
     }
 
-    bool  move         = PMob->PAI->PathFind->IsFollowingPath();
-    float attack_range = PMob->GetMeleeRange();
+    bool  move          = PMob->PAI->PathFind->IsFollowingPath();
+    float attack_range  = PMob->GetMeleeRange();
+    int16 offsetMod     = PMob->getMobMod(MOBMOD_TARGET_DISTANCE_OFFSET);
+    float offset        = static_cast<float>(offsetMod) / 10.0f;
+    float closeDistance = attack_range - (offsetMod == 0 ? 0.2f : offset);
+
+    // No going negative on the final value.
+    if (closeDistance < 0.0f)
+    {
+        closeDistance = 0.0f;
+    }
 
     if (PMob->getMobMod(MOBMOD_ATTACK_SKILL_LIST) > 0)
     {
@@ -789,7 +798,7 @@ void CMobController::Move()
         CMobEntity* posShare = (CMobEntity*)PMob->GetEntity(PMob->getMobMod(MOBMOD_SHARE_POS) + PMob->targid, TYPE_MOB);
         PMob->loc            = posShare->loc;
     }
-    else if (((currentDistance > attack_range - 0.2f) || move) && PMob->PAI->CanFollowPath())
+    else if (((currentDistance > closeDistance) || move) && PMob->PAI->CanFollowPath())
     {
         // #TODO: can this be moved to scripts entirely?
         if (PMob->getMobMod(MOBMOD_DRAW_IN))
@@ -813,6 +822,7 @@ void CMobController::Move()
                 }
             }
         }
+
         if (PMob->speed != 0 && PMob->getMobMod(MOBMOD_NO_MOVE) == 0 && m_Tick >= m_LastSpecialTime)
         {
             // attempt to teleport to target (if in range)
@@ -832,16 +842,16 @@ void CMobController::Move()
                 if (!PMob->PAI->PathFind->IsFollowingPath())
                 {
                     // out of melee range, try to path towards
-                    if (currentDistance > PMob->GetMeleeRange())
+                    if (currentDistance > (offsetMod == 0 ? PMob->GetMeleeRange() : closeDistance))
                     {
                         // try to find path towards target
-                        PMob->PAI->PathFind->PathInRange(PTarget->loc.p, attack_range - 0.2f, PATHFLAG_RUN);
+                        PMob->PAI->PathFind->PathInRange(PTarget->loc.p, closeDistance, PATHFLAG_RUN);
                     }
                 }
                 else if (distanceSquared(PMob->PAI->PathFind->GetDestination(), PTarget->loc.p) > 10)
                 {
                     // try to find path towards target
-                    PMob->PAI->PathFind->PathInRange(PTarget->loc.p, attack_range - 0.2f, PATHFLAG_RUN);
+                    PMob->PAI->PathFind->PathInRange(PTarget->loc.p, closeDistance, PATHFLAG_RUN);
                 }
 
                 PMob->PAI->PathFind->FollowPath(m_Tick);
@@ -958,9 +968,12 @@ void CMobController::DoRoamTick(time_point tick)
         // i'm claimed by someone and need hate towards this person
         PTarget = (CBattleEntity*)PMob->GetEntity(PMob->m_OwnerID.targid, TYPE_PC | TYPE_MOB | TYPE_PET | TYPE_TRUST);
 
-        PMob->PEnmityContainer->AddBaseEnmity(PTarget);
+        if (PTarget != NULL)
+        {
+            PMob->PEnmityContainer->AddBaseEnmity(PTarget);
+            Engage(PTarget->targid);
+        }
 
-        Engage(PTarget->targid);
         return;
     }
     // #TODO

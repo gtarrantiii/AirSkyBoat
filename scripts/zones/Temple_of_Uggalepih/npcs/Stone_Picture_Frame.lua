@@ -5,8 +5,6 @@
 -- !pos -52.239 -2.089 10.000 159
 -----------------------------------
 local ID = require("scripts/zones/Temple_of_Uggalepih/IDs")
-require("scripts/globals/keyitems")
-require("scripts/globals/status")
 -----------------------------------
 local entity = {}
 
@@ -18,13 +16,7 @@ entity.onTrigger = function(player, npc)
     local zPos = player:getZPos()
 
     if xPos < -60 then
-        if zPos < -6 then -- SW frame
-            if player:hasKeyItem(xi.ki.FINAL_FANTASY) then
-                player:startEvent(50, xi.ki.FINAL_FANTASY)
-            else
-                player:messageSpecial(ID.text.PAINTBRUSH_OFFSET + 31) -- This is a frame for a painting.
-            end
-        elseif zPos < 5 then
+        if zPos < 5 then
             player:messageSpecial(ID.text.PAINTBRUSH_OFFSET + 14) -- It is a picture of an old mage carrying a staff.
         else
             player:messageSpecial(ID.text.PAINTBRUSH_OFFSET + 13) -- It is a picture of a small group of three men and women.
@@ -60,9 +52,10 @@ entity.onEventUpdate = function(player, csid, option)
 end
 
 entity.onEventFinish = function(player, csid, option)
-    if csid == 50 then
+    --if csid == 50 then
         -- Soon !
-    elseif csid == 60 then
+    --else
+    if csid == 60 then
         local timeElapsed = os.time() - player:getCharVar("started_painting")
         if timeElapsed >= 30 then
             player:messageSpecial(ID.text.PAINTBRUSH_OFFSET + 22) -- You succeeded in projecting the image in your soul to the blank canvas. The door to the Rancor Den has opened!<Prompt>

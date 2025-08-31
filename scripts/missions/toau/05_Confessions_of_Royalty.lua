@@ -5,10 +5,8 @@
 -- !addmission 4 4
 -- Halver : !pos 2 0.1 0.1 233
 -----------------------------------
-require('scripts/globals/items')
 require('scripts/globals/missions')
 require('scripts/globals/npc_util')
-require('scripts/globals/keyitems')
 require('scripts/globals/interaction/mission')
 require('scripts/globals/zone')
 -----------------------------------
@@ -42,6 +40,7 @@ mission.sections =
             {
                 [564] = function(player, csid, option, npc)
                     if option == 1 then
+                        player:setCharVar('Mission[4][5]Stage', getMidnight())
                         player:delKeyItem(xi.ki.RAILLEFALS_LETTER)
                         mission:complete(player)
                     end

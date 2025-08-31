@@ -58,7 +58,7 @@ xi.instance.lookup =
     {
         -- Assault: Golden Salvage
         -- Assault: Lamia No.13
-        -- Assault: Extermination
+        { 5502, { 219, 43, -4, 0, 70, 4, 1 }, { 219, 4 }, { 147, 0 } }, -- Assault: Extermination
         -- Assault: Demolition Duty
         -- Assault: Searat Salvation
         -- Assault: Apkallu Seizure
@@ -97,7 +97,7 @@ xi.instance.lookup =
     {
         { 6300, { 203, 21, -4, 0, 50, 0, 1 }, { 203, 4 }, { 208, 0 } }, -- Assault: Excavation Duty
         -- Assault: Lebros Supplies
-        -- Assault: Troll Fugitives
+        { 6302, { 203, 23, -4, 0, 70, 2, 1 }, { 203, 4 }, { 208, 4 } }, -- Assault: Troll Fugitives
         -- Assault: Evade and Escape
         -- Assault: Siegemaster Assassination
         -- Assault: Apkallu Breeding
@@ -112,7 +112,7 @@ xi.instance.lookup =
         { 6600, { 505, 11, -4, 0, 60, 0, 1 }, { 505, 4 }, { 511, 0 } }, -- Assault: Imperial Agent Rescue
         -- Assault: Preemptive Strike
         -- Assault: Sagelord Elimination
-        -- Assault: Breaking Morale
+        { 6603, { 505, 14, -4, 0, 60, 0, 1 }, { 505, 4 }, { 511, 0 } }, -- Assault: Breaking Morale
         -- Assault: The Double Agent
         -- Assault: Imperial Treasure Retrieval
         -- Assault: Blitzkrieg

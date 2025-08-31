@@ -334,14 +334,11 @@ void CLatentEffectContainer::CheckLatentsRollSong()
 void CLatentEffectContainer::CheckLatentsDay()
 {
     ProcessLatentEffects([this](CLatentEffect& latentEffect) {
-        switch (latentEffect.GetConditionsID())
+        if (latentEffect.GetConditionsID() == LATENT::TIME_OF_DAY)
         {
-            case LATENT::TIME_OF_DAY:
-                return ProcessLatentEffect(latentEffect);
-                break;
-            default:
-                break;
+            return ProcessLatentEffect(latentEffect);
         }
+
         return false;
     });
 }
@@ -355,14 +352,11 @@ void CLatentEffectContainer::CheckLatentsMoonPhase()
 {
     TracyZoneScoped;
     ProcessLatentEffects([this](CLatentEffect& latentEffect) {
-        switch (latentEffect.GetConditionsID())
+        if (latentEffect.GetConditionsID() == LATENT::MOON_PHASE)
         {
-            case LATENT::MOON_PHASE:
-                return ProcessLatentEffect(latentEffect);
-                break;
-            default:
-                break;
+            return ProcessLatentEffect(latentEffect);
         }
+
         return false;
     });
 }
@@ -405,14 +399,11 @@ void CLatentEffectContainer::CheckLatentsHours()
 {
     TracyZoneScoped;
     ProcessLatentEffects([this](CLatentEffect& latentEffect) {
-        switch (latentEffect.GetConditionsID())
+        if (latentEffect.GetConditionsID() == LATENT::HOUR_OF_DAY)
         {
-            case LATENT::HOUR_OF_DAY:
-                return ProcessLatentEffect(latentEffect);
-                break;
-            default:
-                break;
+            return ProcessLatentEffect(latentEffect);
         }
+
         return false;
     });
 }
@@ -474,14 +465,11 @@ void CLatentEffectContainer::CheckLatentsPartyMembers(size_t members)
 void CLatentEffectContainer::CheckLatentsPartyJobs()
 {
     ProcessLatentEffects([this](CLatentEffect& latentEffect) {
-        switch (latentEffect.GetConditionsID())
+        if (latentEffect.GetConditionsID() == LATENT::JOB_IN_PARTY)
         {
-            case LATENT::JOB_IN_PARTY:
-                return ProcessLatentEffect(latentEffect);
-                break;
-            default:
-                break;
+            return ProcessLatentEffect(latentEffect);
         }
+
         return false;
     });
 }
@@ -495,14 +483,11 @@ void CLatentEffectContainer::CheckLatentsPartyJobs()
 void CLatentEffectContainer::CheckLatentsPartyAvatar()
 {
     ProcessLatentEffects([this](CLatentEffect& latentEffect) {
-        switch (latentEffect.GetConditionsID())
+        if (latentEffect.GetConditionsID() == LATENT::AVATAR_IN_PARTY)
         {
-            case LATENT::AVATAR_IN_PARTY:
-                return ProcessLatentEffect(latentEffect);
-                break;
-            default:
-                break;
+            return ProcessLatentEffect(latentEffect);
         }
+
         return false;
     });
 }
@@ -538,14 +523,11 @@ void CLatentEffectContainer::CheckLatentsJobLevel()
 void CLatentEffectContainer::CheckLatentsPetType()
 {
     ProcessLatentEffects([this](CLatentEffect& latentEffect) {
-        switch (latentEffect.GetConditionsID())
+        if (latentEffect.GetConditionsID() == LATENT::PET_ID)
         {
-            case LATENT::PET_ID:
-                return ProcessLatentEffect(latentEffect);
-                break;
-            default:
-                break;
+            return ProcessLatentEffect(latentEffect);
         }
+
         return false;
     });
 }
@@ -674,9 +656,14 @@ bool CLatentEffectContainer::ProcessLatentEffect(CLatentEffect& latentEffect)
     auto expression  = false;
     auto latentFound = true;
 
+    if (m_POwner == nullptr)
+    {
+        return false;
+    }
+
     // this gets the current zone ID or destination zone ID if zoning
     uint16 playerZoneID = m_POwner->getZone();
-    if (m_POwner == nullptr || playerZoneID == 0)
+    if (playerZoneID == 0)
     {
         return false;
     }
@@ -1040,29 +1027,23 @@ bool CLatentEffectContainer::ProcessLatentEffect(CLatentEffect& latentEffect)
             break;
         case LATENT::NATION_CONTROL:
         {
-
-            // player is logging in/zoning, for some reason this latent does not work with
-            // destination zone, maybe client related?
-            if (m_POwner->loc.zone == nullptr)
-            {
-                return false;
-            }
-
-            auto region      = zoneutils::GetCurrentRegion(playerZoneID);
-            auto hasSignet   = m_POwner->StatusEffectContainer->HasStatusEffect(EFFECT_SIGNET);
-            auto hasSanction = m_POwner->StatusEffectContainer->HasStatusEffect(EFFECT_SANCTION);
-            auto hasSigil    = m_POwner->StatusEffectContainer->HasStatusEffect(EFFECT_SIGIL);
-
+            // playerZoneId represents the player's destination if they're zoning.
+            // Otherwise, it represents their current zone.
+            auto region                   = zoneutils::GetCurrentRegion(playerZoneID);
+            auto hasSignet                = m_POwner->StatusEffectContainer->HasStatusEffect(EFFECT_SIGNET);
+            auto hasSanction              = m_POwner->StatusEffectContainer->HasStatusEffect(EFFECT_SANCTION);
+            auto hasSigil                 = m_POwner->StatusEffectContainer->HasStatusEffect(EFFECT_SIGIL);
+            auto regionAlwaysOutOfControl = zoneutils::IsAlwaysOutOfNationControl(region);
             switch (latentEffect.GetConditionsValue())
             {
                 case 0:
                     // under own nation's control
-                    expression = region < REGION_TYPE::WEST_AHT_URHGAN && conquest::GetRegionOwner(region) == m_POwner->profile.nation &&
+                    expression = region < REGION_TYPE::WEST_AHT_URHGAN && (!regionAlwaysOutOfControl || conquest::GetRegionOwner(region) == m_POwner->profile.nation) &&
                                  (hasSignet || hasSanction || hasSigil);
                     break;
                 case 1:
                     // outside of own nation's control
-                    expression = region < REGION_TYPE::WEST_AHT_URHGAN && m_POwner->profile.nation != conquest::GetRegionOwner(region) &&
+                    expression = region < REGION_TYPE::WEST_AHT_URHGAN && (regionAlwaysOutOfControl || m_POwner->profile.nation != conquest::GetRegionOwner(region)) &&
                                  (hasSignet || hasSanction || hasSigil);
                     break;
             }
@@ -1070,26 +1051,19 @@ bool CLatentEffectContainer::ProcessLatentEffect(CLatentEffect& latentEffect)
         }
         case LATENT::ZONE_HOME_NATION:
         {
+            auto  nationRegion = static_cast<REGION_TYPE>(latentEffect.GetConditionsValue());
+            auto  region       = zoneutils::GetCurrentRegion(playerZoneID);
 
-            // player is logging in/zoning, for some reason this latent does not work with
-            // destination zone, maybe client related?
-            if (m_POwner->loc.zone == nullptr)
-            {
-                return false;
-            }
-
-            auto  region = static_cast<REGION_TYPE>(latentEffect.GetConditionsValue());
-
-            switch (region)
+            switch (nationRegion)
             {
                 case REGION_TYPE::SANDORIA:
-                    expression = m_POwner->profile.nation == 0 && zoneutils::GetCurrentRegion(playerZoneID) == region;
+                    expression = m_POwner->profile.nation == 0 && region == nationRegion;
                     break;
                 case REGION_TYPE::BASTOK:
-                    expression = m_POwner->profile.nation == 1 && zoneutils::GetCurrentRegion(playerZoneID) == region;
+                    expression = m_POwner->profile.nation == 1 && region == nationRegion;
                     break;
                 case REGION_TYPE::WINDURST:
-                    expression = m_POwner->profile.nation == 2 && zoneutils::GetCurrentRegion(playerZoneID) == region;
+                    expression = m_POwner->profile.nation == 2 && region == nationRegion;
                     break;
                 default:
                     break;
@@ -1130,6 +1104,9 @@ bool CLatentEffectContainer::ProcessLatentEffect(CLatentEffect& latentEffect)
                     expression = PMob->m_SuperFamily == latentEffect.GetConditionsValue();
                 }
             }
+            break;
+        case LATENT::MAINJOB:
+            expression = m_POwner->GetMJob() == latentEffect.GetConditionsValue();
             break;
         case LATENT::EQUIPPED_IN_SLOT:
             expression = latentEffect.GetSlot() == latentEffect.GetConditionsValue();

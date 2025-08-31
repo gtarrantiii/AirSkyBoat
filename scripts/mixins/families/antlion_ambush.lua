@@ -9,12 +9,19 @@ g_mixins.families.antlion_ambush = function(antlionAmbushMob)
     antlionAmbushMob:addListener("SPAWN", "ANTLION_AMBUSH_SPAWN", function(mob)
         mob:hideName(true)
         mob:setUntargetable(true)
-        mob:setAnimationSub(0)
-        mob:wait(2000)
+        if mob:getZoneID() ~= xi.zone.DYNAMIS_TAVNAZIA then
+            mob:setAnimationSub(0)
+            mob:wait(2000)
+        end
     end)
 
     antlionAmbushMob:addListener("ENGAGE", "ANTLION_AMBUSH_ENGAGE", function(mob, target)
-        mob:useMobAbility(278) -- Pit Ambush
+        local ability = 278 -- Pit Ambush
+        if mob:getZoneID() == xi.zone.DYNAMIS_TAVNAZIA then
+            ability = 1844 -- Enhanced Pit Ambush for DYNAMIS_TAVNAZIA
+        end
+
+        mob:useMobAbility(ability) -- Pit Ambush
         mob:setMobMod(xi.mobMod.NO_MOVE, 0)
         mob:timer(2000, function(ant)
             ant:hideName(false)

@@ -1,8 +1,6 @@
 ------------------------------------
 -- Starlight Celebration
 ------------------------------------
-require("scripts/globals/settings")
-------------------------------------
 xi = xi or {}
 xi.events = xi.events or {}
 xi.events.sunbreeze_festival = xi.events.sunbreeze_festival or {}
@@ -10,7 +8,7 @@ xi.events.sunbreeze_festival = xi.events.sunbreeze_festival or {}
 local event = SeasonalEvent:new("SunbreezeFestival")
 
 xi.events.sunbreeze_festival.enabledCheck = function()
-    return tonumber(os.date("%m")) == 8 and xi.settings.main.SUNBREEZE == 1 or xi.settings.main.SUNBREEZE_YEAR_ROUND
+    return tonumber(os.date("%m")) == 8 and xi.settings.main.SUNBREEZE == 1 or xi.settings.main.SUNBREEZE_YEAR_ROUND == 1
 end
 
 event:setEnableCheck(xi.events.sunbreeze_festival.enabledCheck)
@@ -212,29 +210,37 @@ local goldfishRewardTable =
 
 local fishValue =
 {
-    [xi.items.TINY_GOLDFISH]    = 1,
-    [xi.items.BLACK_BUBBLE_EYE] = 2,
-    [xi.items.LIONHEAD]         = 10,
-    [xi.items.PEARLSCALE]       = 30,
-    [xi.items.CALICO_COMET]     = 30,
+    [xi.items.TINY_GOLDFISH]    = { amount = 1,  isStackable = true  },
+    [xi.items.BLACK_BUBBLE_EYE] = { amount = 2,  isStackable = true  },
+    [xi.items.LIONHEAD]         = { amount = 10, isStackable = false },
+    [xi.items.PEARLSCALE]       = { amount = 30, isStackable = false },
+    [xi.items.CALICO_COMET]     = { amount = 30, isStackable = false },
 }
 
 xi.events.sunbreeze_festival.goldfishVendorOnTrade = function(player, npc, trade, csid)
-    local hasBasket = player:hasItem(xi.items.GOLDFISH_BASKET) and 1 or 0
-    local points    = 0
+    local hasBasket  = player:hasItem(xi.items.GOLDFISH_BASKET) and 1 or 0
+    local tradedFish = {}
+    local points     = 0
     local itemQty
     local itemID
+    local fish
 
     -- Manually handles the trade in order to calculate the points rewarded
     for i = 0, trade:getSlotCount() - 1 do
         itemID  = trade:getItemId(i)
         itemQty = trade:getItemQty(itemID)
+        tradedFish[itemID] = itemQty
+        fish = fishValue[itemID]
 
-        if fishValue[itemID] == nil then
-            break
+        if fish.amount == nil then
+            return
         else
             trade:confirmItem(itemID, itemQty)
-            points = points + fishValue[itemID] * itemQty
+            if fish.isStackable then
+                points = points + fish.amount * tradedFish[itemID]
+            else
+                points = points + fish.amount
+            end
         end
     end
 
@@ -355,14 +361,16 @@ xi.events.sunbreeze_festival.setMusic = function(flag)
 end
 
 xi.events.sunbreeze_festival.onZoneTick = function(zone)
-    local npc = GetNPCByID(zones[zone:getID()].npc.GOLDFISH_NPC)
+    if xi.events.sunbreeze_festival.enabledCheck() then
+        local npc = GetNPCByID(zones[zone:getID()].npc.GOLDFISH_NPC)
 
-    if
-        xi.events.sunbreeze_festival.enabledCheck and
-        npc:getLocalVar("[SUNBREEZE]goldfishDialogueTimer") < os.time()
-    then
-        npc:showText(npc, zones[zone:getID()].text.GOLDFISH_NPC_DIALOGUE + math.random(0, 2))
-        npc:setLocalVar("[SUNBREEZE]goldfishDialogueTimer", os.time() + 20)
+        if
+            xi.events.sunbreeze_festival.enabledCheck and
+            npc:getLocalVar("[SUNBREEZE]goldfishDialogueTimer") < os.time()
+        then
+            npc:showText(npc, zones[zone:getID()].text.GOLDFISH_NPC_DIALOGUE + math.random(0, 2))
+            npc:setLocalVar("[SUNBREEZE]goldfishDialogueTimer", os.time() + 20)
+        end
     end
 end
 

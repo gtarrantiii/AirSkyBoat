@@ -4,10 +4,8 @@
 -----------------------------------
 -- !addmission 4 7
 -----------------------------------
-require('scripts/globals/items')
 require('scripts/globals/missions')
 require('scripts/globals/npc_util')
-require('scripts/globals/keyitems')
 require('scripts/globals/interaction/mission')
 require('scripts/globals/zone')
 -----------------------------------
@@ -34,8 +32,10 @@ mission.sections =
 
     {
         check = function(player, currentMission, missionStatus, vars)
-            return currentMission == mission.missionId and
-                not mission:getMustZone(player)
+            return
+                currentMission == mission.missionId
+                and os.time() >= vars.Stage
+                and not mission:getMustZone(player)
         end,
 
         [xi.zone.AHT_URHGAN_WHITEGATE] =

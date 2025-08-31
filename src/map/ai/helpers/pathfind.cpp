@@ -20,6 +20,7 @@ along with this program.  If not, see http://www.gnu.org/licenses/
 */
 
 #include "pathfind.h"
+
 #include "ai/ai_container.h"
 #include "common/settings.h"
 #include "common/utils.h"
@@ -590,8 +591,7 @@ bool CPathFind::OnPoint() const
 
 float CPathFind::GetRealSpeed()
 {
-    int realSpeed = m_POwner->speed;
-    int speedMod  = settings::get<int8>("map.MOB_SPEED_MOD");
+    uint8 realSpeed = m_POwner->speed;
 
     // 'GetSpeed()' factors in movement bonuses such as map confs and modifiers.
     if (m_POwner->objtype != TYPE_NPC)
@@ -608,14 +608,11 @@ float CPathFind::GetRealSpeed()
         }
         else if (m_POwner->animation == ANIMATION_ATTACK)
         {
-            if (realSpeed > 20)
-            {
-                realSpeed += std::clamp(speedMod, 0, realSpeed - 10); // Never allow the mob speed mod to reduce speed so slow they can't move.  Only Bind
-            }
+            realSpeed = realSpeed + settings::get<int8>("map.MOB_SPEED_MOD");
         }
     }
 
-    return std::clamp<uint8>(realSpeed, 0, 255);
+    return realSpeed;
 }
 
 bool CPathFind::IsFollowingPath()
@@ -653,11 +650,6 @@ bool CPathFind::InWater()
     }
 
     return false;
-}
-
-bool CPathFind::CanSeePoint(const position_t& point, bool lookOffMesh)
-{
-    return m_POwner->loc.zone->lineOfSight->Raycast(m_POwner->loc.p, point).has_value();
 }
 
 const position_t& CPathFind::GetDestination() const

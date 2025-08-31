@@ -2,7 +2,6 @@
 -- Helper file for "One to be Feared" Battlefield
 -----------------------------------
 local ID = require("scripts/zones/Sealions_Den/IDs")
-require("scripts/globals/status")
 require("scripts/globals/titles")
 -----------------------------------
 local oneToBeFeared = {}
@@ -36,6 +35,12 @@ local function returnToAirship(player)
         player:setPos(-140.029, -23.348, -446.376, 193)
     elseif instance == 3 then
         player:setPos(499.969, 56.652, -806.132, 193)
+    end
+
+    -- allow resending raise/reraise prompt since we moved player
+    -- which removes the prompt from player screen
+    if player:isDead() then
+        player:allowSendRaisePrompt()
     end
 end
 

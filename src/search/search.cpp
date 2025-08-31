@@ -89,7 +89,7 @@ struct SearchCommInfo
     uint16 port;
 };
 
-void TaskManagerThread(const bool& requestExit);
+void TaskManagerThread(bool const& requestExit);
 
 int32 ah_cleanup(time_point tick, CTaskMgr::CTask* PTask);
 
@@ -638,7 +638,7 @@ void HandleAuctionHouseRequest(CTCPRequestPacket& PTCPRequest)
     }
 
     OrderByString.append(" item_basic.itemid");
-    int8* OrderByArray = (int8*)OrderByString.data();
+    const char* OrderByArray = OrderByString.data();
 
     CDataLoader          PDataLoader;
     std::vector<ahItem*> ItemList = PDataLoader.GetAHItemsToCategory(AHCatID, OrderByArray);
@@ -936,7 +936,7 @@ search_req _HandleSearchRequest(CTCPRequestPacket& PTCPRequest)
  *                                                                       *
  ************************************************************************/
 
-void TaskManagerThread(const bool& requestExit)
+void TaskManagerThread(bool const& requestExit)
 {
     duration next;
     while (!requestExit)

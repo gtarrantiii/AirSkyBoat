@@ -324,7 +324,7 @@ void CCharEntity::pushPacket(CBasicPacket* packet)
     TracyZoneString(GetName());
     TracyZoneHex16(packet->getType());
 
-    moduleutils::OnPushPacket(packet);
+    moduleutils::OnPushPacket(this, packet);
 
     if (packet->getType() == 0x5B)
     {
@@ -606,12 +606,9 @@ void CCharEntity::SetName(const std::string& name)
 
 int16 CCharEntity::addTP(int16 tp)
 {
-    // int16 oldtp = health.tp;
     tp = CBattleEntity::addTP(tp);
-    //  if ((oldtp < 1000 && health.tp >= 1000 ) || (oldtp >= 1000 && health.tp < 1000))
-    //  {
     PLatentEffectContainer->CheckLatentsTP();
-    //  }
+
     return abs(tp);
 }
 
@@ -1407,6 +1404,11 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
             action.recast = PAbility->getRecastTime() - meritRecastReduction;
         }
 
+        if (PAbility->getID() == ABILITY_THIRD_EYE && this->StatusEffectContainer->HasStatusEffect(EFFECT_SEIGAN))
+        {
+            action.recast /= 2;
+        }
+
         if (PAbility->getID() == ABILITY_LIGHT_ARTS || PAbility->getID() == ABILITY_DARK_ARTS || PAbility->getRecastId() == 231) // stratagems
         {
             if (this->StatusEffectContainer->HasStatusEffect(EFFECT_TABULA_RASA))
@@ -1656,14 +1658,7 @@ void CCharEntity::OnAbility(CAbilityState& state, action_t& action)
         }
         else
         {
-            if (this->StatusEffectContainer->HasStatusEffect(EFFECT_SEIGAN) && PAbility->getID() == 62)
-            {
-                PRecastContainer->Add(RECAST_ABILITY, PAbility->getRecastId(), action.recast / 2);
-            }
-            else
-            {
-                PRecastContainer->Add(RECAST_ABILITY, PAbility->getRecastId(), action.recast);
-            }
+            PRecastContainer->Add(RECAST_ABILITY, PAbility->getRecastId(), action.recast);
         }
 
         uint16 recastID = PAbility->getRecastId();
@@ -1827,15 +1822,6 @@ void CCharEntity::OnRangedAttack(CRangeState& state, action_t& action)
 
                 if (slot == SLOT_RANGED)
                 {
-                    if (state.IsRapidShot())
-                    {
-                        damage = attackutils::CheckForDamageMultiplier(this, PItem, damage, PHYSICAL_ATTACK_TYPE::RAPID_SHOT, SLOT_RANGED);
-                    }
-                    else
-                    {
-                        damage = attackutils::CheckForDamageMultiplier(this, PItem, damage, PHYSICAL_ATTACK_TYPE::RANGED, SLOT_RANGED);
-                    }
-
                     if (PItem != nullptr)
                     {
                         charutils::TrySkillUP(this, (SKILLTYPE)PItem->getSkillType(), PTarget->GetMLevel());
@@ -1845,10 +1831,12 @@ void CCharEntity::OnRangedAttack(CRangeState& state, action_t& action)
                 {
                     charutils::TrySkillUP(this, (SKILLTYPE)PAmmo->getSkillType(), PTarget->GetMLevel());
                 }
+                totalDamage += damage;
             }
         }
         else // miss
         {
+            damage                  = 0;
             actionTarget.reaction   = REACTION::EVADE;
             actionTarget.speceffect = SPECEFFECT::NONE;
             actionTarget.messageID  = 354;
@@ -1880,7 +1868,6 @@ void CCharEntity::OnRangedAttack(CRangeState& state, action_t& action)
                 hitCount = i;
             }
         }
-        totalDamage += damage;
     }
 
     // if a hit did occur (even without barrage)
@@ -1894,14 +1881,20 @@ void CCharEntity::OnRangedAttack(CRangeState& state, action_t& action)
             actionTarget.speceffect = SPECEFFECT::CRITICAL_HIT;
         }
 
+        if (slot == SLOT_RANGED)
+        {
+            if (state.IsRapidShot())
+            {
+                totalDamage = attackutils::CheckForDamageMultiplier(this, PItem, totalDamage, PHYSICAL_ATTACK_TYPE::RAPID_SHOT, SLOT_RANGED, true);
+            }
+            else
+            {
+                totalDamage = attackutils::CheckForDamageMultiplier(this, PItem, totalDamage, PHYSICAL_ATTACK_TYPE::RANGED, SLOT_RANGED, true);
+            }
+        }
+
         actionTarget.param =
             battleutils::TakePhysicalDamage(this, PTarget, PHYSICAL_ATTACK_TYPE::RANGED, totalDamage, false, slot, realHits, nullptr, true, true);
-
-        // lower damage based on shadows taken
-        if (shadowsTaken)
-        {
-            actionTarget.param = (int32)(actionTarget.param * (1 - ((float)shadowsTaken / realHits)));
-        }
 
         // absorb message
         if (actionTarget.param < 0)
@@ -2047,6 +2040,7 @@ void CCharEntity::HandleErrorMessage(std::unique_ptr<CBasicPacket>& msg)
 void CCharEntity::OnDeathTimer()
 {
     TracyZoneScoped;
+    charutils::SetCharVar(this, "expLost", 0);
     charutils::HomePoint(this);
 }
 
@@ -2124,32 +2118,15 @@ void CCharEntity::OnRaise()
 
         loc.zone->PushPacket(this, CHAR_INRANGE_SELF, new CActionPacket(action));
 
-        uint8 mLevel = charutils::GetCharVar(this, "DeathLevel");
+        // Do not return EXP to the player if they do not have experienceLost variable.
+        uint16 expLost = charutils::GetCharVar(this, "expLost");
 
-        // Do not return EXP to the player if they do not have a level at death set
-        if (mLevel != 0)
+        if (expLost != 0)
         {
-            uint16 expLost = mLevel <= 67 ? (charutils::GetExpNEXTLevel(mLevel) * 8) / 100 : 2400;
-
-            uint16 xpNeededToLevel = charutils::GetExpNEXTLevel(jobs.job[GetMJob()]) - jobs.exp[GetMJob()];
-
-            // Player died within a battlefield, reward the battlefield level equivalent EXP
-            if (StatusEffectContainer->HasStatusEffect(EFFECT_BATTLEFIELD))
-            {
-                expLost = m_LevelRestriction >= 1 && m_LevelRestriction <= 67 ? (charutils::GetExpNEXTLevel(m_LevelRestriction) * 8) / 100 : 2400;
-            }
-
-            // Exp is enough to level you and (you're not under a level restriction, or the level restriction is higher than your current main level).
-            if (xpNeededToLevel < expLost && (m_LevelRestriction == 0 || GetMLevel() < m_LevelRestriction))
-            {
-                // Player probably leveled down when they died.  Give they xp for the next level.
-                expLost = GetMLevel() <= 67 ? (charutils::GetExpNEXTLevel(jobs.job[GetMJob()] + 1) * 8) / 100 : 2400;
-            }
-
             uint16 xpReturned = (uint16)(ceil(expLost * ratioReturned));
             charutils::AddExperiencePoints(true, this, this, xpReturned);
 
-            charutils::SetCharVar(this, "DeathLevel", 0);
+            charutils::SetCharVar(this, "expLost", 0);
         }
 
         // If Arise was used then apply a reraise 3 effect on the target
@@ -2348,10 +2325,6 @@ void CCharEntity::Die()
         (PBattlefield == nullptr || (PBattlefield->GetRuleMask() & RULES_LOSE_EXP) == RULES_LOSE_EXP) &&
         GetMLevel() >= settings::get<uint8>("map.EXP_LOSS_LEVEL"))
     {
-        // Track what level the player died at to properly give EXP back on raise
-        int32 level = (m_LevelRestriction > 0 && m_LevelRestriction < GetMLevel()) ? m_LevelRestriction : GetMLevel();
-        charutils::SetCharVar(this, "DeathLevel", level);
-
         float retainPercent = std::clamp(settings::get<uint8>("map.EXP_RETAIN") + getMod(Mod::EXPERIENCE_RETAINED) / 100.0f, 0.0f, 1.0f);
         charutils::DelExperiencePoints(this, retainPercent, 0);
 
@@ -2476,6 +2449,7 @@ bool CCharEntity::hasMoghancement(uint16 moghancementID) const
 void CCharEntity::UpdateMoghancement()
 {
     TracyZoneScoped;
+
     // Add up all of the installed furniture auras
     std::array<uint16, 8> elements = { 0 };
     for (auto containerID : { LOC_MOGSAFE, LOC_MOGSAFE2 })
@@ -2487,7 +2461,7 @@ void CCharEntity::UpdateMoghancement()
             if (PItem != nullptr && PItem->isType(ITEM_FURNISHING))
             {
                 CItemFurnishing* PFurniture = static_cast<CItemFurnishing*>(PItem);
-                if (PFurniture->isInstalled())
+                if (PFurniture->isInstalled() && !PFurniture->getOn2ndFloor())
                 {
                     elements[PFurniture->getElement() - 1] += PFurniture->getAura();
                 }
@@ -2530,7 +2504,7 @@ void CCharEntity::UpdateMoghancement()
                 {
                     CItemFurnishing* PFurniture = static_cast<CItemFurnishing*>(PItem);
                     // If aura is tied then use whichever furniture was placed most recently
-                    if (PFurniture->isInstalled() && PFurniture->getElement() == dominantElement &&
+                    if (PFurniture->isInstalled() && !PFurniture->getOn2ndFloor() && PFurniture->getElement() == dominantElement &&
                         (PFurniture->getAura() > bestAura || (PFurniture->getAura() == bestAura && PFurniture->getOrder() < bestOrder)))
                     {
                         bestAura          = PFurniture->getAura();
@@ -2787,23 +2761,29 @@ void CCharEntity::changeMoghancement(uint16 moghancementID, bool isAdding)
             break;
 
         // NOTE: Exact values for resistances is unknown
+        case MOGLIFICATION_RESIST_DEATH:
+            addModifier(Mod::DEATHRES, 10 * multiplier);
+            break;
+        case MOGLIFICATION_RESIST_SLEEP:
+            addModifier(Mod::SLEEPRES, 10 * multiplier);
+            break;
         case MOGLIFICATION_RESIST_POISON:
-            addModifier(Mod::POISONRES, 20 * multiplier);
+            addModifier(Mod::POISONRES, 10 * multiplier);
             break;
         case MOGLIFICATION_RESIST_PARALYSIS:
-            addModifier(Mod::SILENCERES, 20 * multiplier);
+            addModifier(Mod::PARALYZERES, 10 * multiplier);
             break;
         case MOGLIFICATION_RESIST_SILENCE:
-            addModifier(Mod::SILENCERES, 20 * multiplier);
+            addModifier(Mod::SILENCERES, 10 * multiplier);
             break;
         case MOGLIFICATION_RESIST_PETRIFICATION:
-            addModifier(Mod::PETRIFYRES, 20 * multiplier);
+            addModifier(Mod::PETRIFYRES, 10 * multiplier);
             break;
         case MOGLIFICATION_RESIST_VIRUS:
-            addModifier(Mod::VIRUSRES, 20 * multiplier);
+            addModifier(Mod::VIRUSRES, 10 * multiplier);
             break;
         case MOGLIFICATION_RESIST_CURSE:
-            addModifier(Mod::CURSERES, 20 * multiplier);
+            addModifier(Mod::CURSERES, 10 * multiplier);
             break;
         default:
             break;

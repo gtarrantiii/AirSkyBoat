@@ -14,8 +14,6 @@
 require("scripts/globals/teleports") -- For warp weapon proc.
 require("scripts/globals/magic") -- For resist functions
 require("scripts/globals/utils") -- For clamping function
-require("scripts/globals/msg")
-require("scripts/globals/events/harvest_festivals")
 --------------------------------------
 xi = xi or {}
 xi.additionalEffect = xi.additionalEffect or {}
@@ -159,20 +157,20 @@ xi.additionalEffect.attack = function(attacker, defender, baseAttackDamage, item
     local msgParam  = 0
 
     local immunityTable =
-            {
-                { status = xi.effect.SLEEP_I,   immunity = xi.immunity.SLEEP    },
-                { status = xi.effect.WEIGHT,    immunity = xi.immunity.GRAVITY  },
-                { status = xi.effect.BIND,      immunity = xi.immunity.BIND     },
-                { status = xi.effect.STUN,      immunity = xi.immunity.STUN     },
-                { status = xi.effect.SILENCE,   immunity = xi.immunity.SILENCE  },
-                { status = xi.effect.PARALYSIS, immunity = xi.immunity.PARALYZE },
-                { status = xi.effect.BLINDNESS, immunity = xi.immunity.BLIND    },
-                { status = xi.effect.SLOW,      immunity = xi.immunity.SLOW     },
-                { status = xi.effect.POISON,    immunity = xi.immunity.POISON   },
-                { status = xi.effect.ELEGY,     immunity = xi.immunity.ELEGY    },
-                { status = xi.effect.REQUIEM,   immunity = xi.immunity.REQUIEM  },
-                { status = xi.effect.TERROR,    immunity = xi.immunity.TERROR   },
-            }
+    {
+        { status = xi.effect.SLEEP_I,   immunity = xi.immunity.SLEEP    },
+        { status = xi.effect.WEIGHT,    immunity = xi.immunity.GRAVITY  },
+        { status = xi.effect.BIND,      immunity = xi.immunity.BIND     },
+        { status = xi.effect.STUN,      immunity = xi.immunity.STUN     },
+        { status = xi.effect.SILENCE,   immunity = xi.immunity.SILENCE  },
+        { status = xi.effect.PARALYSIS, immunity = xi.immunity.PARALYZE },
+        { status = xi.effect.BLINDNESS, immunity = xi.immunity.BLIND    },
+        { status = xi.effect.SLOW,      immunity = xi.immunity.SLOW     },
+        { status = xi.effect.POISON,    immunity = xi.immunity.POISON   },
+        { status = xi.effect.ELEGY,     immunity = xi.immunity.ELEGY    },
+        { status = xi.effect.REQUIEM,   immunity = xi.immunity.REQUIEM  },
+        { status = xi.effect.TERROR,    immunity = xi.immunity.TERROR   },
+    }
 
     if
         addStatus == xi.effect.DEFENSE_DOWN and
@@ -511,9 +509,10 @@ xi.additionalEffect.attack = function(attacker, defender, baseAttackDamage, item
         for _, member in pairs(attacker:getParty()) do
             if
                 member:getPet() ~= nil and
-                member:getPetID() == option
+                member:getPet():getPetID() == option
             then
                 flag = true
+                break
             end
         end
 
@@ -567,7 +566,7 @@ xi.additionalEffect.attack = function(attacker, defender, baseAttackDamage, item
     --   Ex: Plantoid, Beast, Aquatic
     --------------------------------------
     elseif addType == xi.additionalEffect.procType.VS_ECOSYSTEM then
-        if defender:getSystem() == option then
+        if defender:getEcosystem() == option then
             -- If Drain effect:
             if subEffect == xi.subEffect.HP_DRAIN then
                 damage = xi.additionalEffect.calcDamage(attacker, element, defender, damage, addType, item)

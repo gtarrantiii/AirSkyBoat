@@ -3,8 +3,6 @@
 -- Mob: Razon
 -- ENM: Fire in the Sky
 -----------------------------------
-require("scripts/globals/status")
------------------------------------
 local entity = {}
 
 local elements =
@@ -41,11 +39,11 @@ entity.onMobSpawn = function(mob)
             mobArg:useMobAbility(626) -- dust cloud
             mobArg:setTP(tp)
 
-            if mobArg:getAnimationSub() == 12 then
+            if mobArg:getAnimationSub() == 0 then
                 mobArg:useMobAbility(571)
-            elseif mobArg:getAnimationSub() == 5 then
+            elseif mobArg:getAnimationSub() == 1 then
                 mobArg:useMobAbility(573)
-            elseif mobArg:getAnimationSub() == 6 then
+            elseif mobArg:getAnimationSub() == 2 then
                 mobArg:useMobAbility(575)
             end
         end

@@ -310,26 +310,26 @@ void SmallPacket0x00A(map_session_data_t* const PSession, CCharEntity* const PCh
         char session_key[20 * 2 + 1];
         bin2hex(session_key, (uint8*)PSession->blowfish.key, 20);
 
-        uint16 destination = MAX_ZONEID + 1; // Forces the function to fail closed
-
-        if (PChar != nullptr)
+        if (!PChar)
         {
-            destination = PChar->loc.destination; // Only sets destination if PChar isn't nullptr
-        }
-
-        if (destination >= MAX_ZONEID) // Fails to putting player back to it's previous zone
-        {
-            ShowWarning("packet_system::SmallPacket0x00A GetZone Bad Args for IncreaseZoneCounter, MITIGATING: Sending %s to loc.prevzone.", PChar->GetName());
-            destination = PChar->loc.prevzone;
-        }
-
-        auto zone = zoneutils::GetZone(destination);
-        if (zone == nullptr)
-        {
+            ShowWarning("packet_system::SmallPacket0x00A tried to zone a player that doesn't exist!");
             return;
         }
 
-        zone->IncreaseZoneCounter(PChar);
+        uint16 destination = PChar->loc.destination;
+
+        if (destination >= MAX_ZONEID)
+        {
+            // TODO: work out how to drop player in moghouse that exits them to the zone they were in before this happened, like we used to.
+            ShowWarning("packet_system::SmallPacket0x00A player tried to enter zone out of range: %d", destination);
+            ShowWarning("packet_system::SmallPacket0x00A dumping player `%s` to homepoint!", PChar->GetName());
+            charutils::HomePoint(PChar);
+        }
+
+        if (auto zone = zoneutils::GetZone(destination))
+        {
+            zone->IncreaseZoneCounter(PChar);
+        }
 
         PChar->m_ZonesList[PChar->getZone() >> 3] |= (1 << (PChar->getZone() % 8));
 
@@ -380,20 +380,15 @@ void SmallPacket0x00A(map_session_data_t* const PSession, CCharEntity* const PCh
         {
             PChar->m_charHistory.mhEntrances++;
             gardenutils::UpdateGardening(PChar, false);
-        }
-    }
 
-    // Only release client from "Downloading Data" if the packet sequence came in without a drop on 0x00D
-    // It is also possible that the client also never received our packets to release themselves from the loading screen.
-    // TODO: Need further research into the relationship between 0x00D and 0x00A, if any.
-    if (PChar->loc.zone != nullptr)
-    {
-        // Push Downloading Data before inventory count packets...
-        // This is how it happens on retail.
-        PChar->pushPacket(new CDownloadingDataPacket());
+            // Only release client from "Downloading Data" if the packet sequence came in without a drop on 0x00D
+            // It is also possible that the client also never received our packets to release themselves from the loading screen.
+            // TODO: Need further research into the relationship between 0x00D and 0x00A, if any.
 
-        if (PChar->m_moghouseID != 0)
-        {
+            // Push Downloading Data before inventory count packets...
+            // This is how it happens on retail.
+            PChar->pushPacket(new CDownloadingDataPacket());
+
             // Update any mannequins that might be placed on zonein
             // Build Mannequin model id list
             auto getModelIdFromStorageSlot = [](CCharEntity* PChar, uint8 slot) -> uint16
@@ -840,7 +835,23 @@ void SmallPacket0x016(map_session_data_t* const PSession, CCharEntity* const PCh
                 ShowWarning(fmt::format("Server missing npc_list.sql entry <{}> in zone <{} ({})>",
                                         PEntity->id, zoneutils::GetZone(PChar->getZone())->GetName(), PChar->getZone()));
             }
-            PChar->updateEntityPacket(PEntity, ENTITY_SPAWN, UPDATE_ALL_MOB);
+
+            // Special case for onZoneIn cutscenes in Mog House
+            if (PChar->m_moghouseID &&
+                PEntity->status == STATUS_TYPE::DISAPPEAR &&
+                PEntity->loc.p.z == 1.5 &&
+                PEntity->look.face == 0x52)
+            {
+                // Using the same logic as in ZoneEntities::SpawnMoogle:
+                // Change the status of the entity, send the packet, change it back to disappear
+                PEntity->status = STATUS_TYPE::NORMAL;
+                PChar->updateEntityPacket(PEntity, ENTITY_SPAWN, UPDATE_ALL_MOB);
+                PEntity->status = STATUS_TYPE::DISAPPEAR;
+            }
+            else
+            {
+                PChar->updateEntityPacket(PEntity, ENTITY_SPAWN, UPDATE_ALL_MOB);
+            }
         }
     }
 }
@@ -1101,6 +1112,7 @@ void SmallPacket0x01A(map_session_data_t* const PSession, CCharEntity* const PCh
             {
                 return;
             }
+            PChar->setCharVar("expLost", 0);
             charutils::HomePoint(PChar);
         }
         break;
@@ -2039,14 +2051,14 @@ void SmallPacket0x03A(map_session_data_t* const PSession, CCharEntity* const PCh
     {
         CItem* PItem = PItemContainer->GetItem(slotID);
 
-        if ((PItem != nullptr) && (PItem->getQuantity() < PItem->getStackSize()) && !PItem->isSubType(ITEM_LOCKED))
+        if ((PItem != nullptr) && (PItem->getQuantity() < PItem->getStackSize()) && !PItem->isSubType(ITEM_LOCKED) && (PItem->getReserve() == 0))
         {
             for (uint8 slotID2 = slotID + 1; slotID2 <= size; ++slotID2)
             {
                 CItem* PItem2 = PItemContainer->GetItem(slotID2);
 
                 if ((PItem2 != nullptr) && (PItem2->getID() == PItem->getID()) && (PItem2->getQuantity() < PItem2->getStackSize()) &&
-                    !PItem2->isSubType(ITEM_LOCKED))
+                    !PItem2->isSubType(ITEM_LOCKED) && (PItem2->getReserve() == 0))
                 {
                     uint32 totalQty = PItem->getQuantity() + PItem2->getQuantity();
                     uint32 moveQty  = 0;
@@ -2695,7 +2707,7 @@ void SmallPacket0x04D(map_session_data_t* const PSession, CCharEntity* const PCh
 
             if (quantity > 0 && PItem && PItem->getQuantity() >= quantity && PChar->UContainer->IsSlotEmpty(slotID))
             {
-                int32 ret = sql->Query("SELECT charid, accid FROM chars WHERE charname = '%s' LIMIT 1;", data[0x10]);
+                int32 ret = sql->Query("SELECT charid, accid FROM chars WHERE charname = '%s' LIMIT 1;", str(data[0x10]));
                 if (ret != SQL_ERROR && sql->NumRows() > 0 && sql->NextRow() == SQL_SUCCESS)
                 {
                     uint32 charid = sql->GetUIntData(0);
@@ -2739,7 +2751,7 @@ void SmallPacket0x04D(map_session_data_t* const PSession, CCharEntity* const PCh
                     ret = sql->Query(
                         "INSERT INTO delivery_box(charid, charname, box, slot, itemid, itemsubid, quantity, extra, senderid, sender) VALUES(%u, "
                         "'%s', 2, %u, %u, %u, %u, '%s', %u, '%s'); ",
-                        PChar->id, PChar->GetName(), slotID, PItem->getID(), PItem->getSubID(), quantity, extra, charid, data[0x10]);
+                        PChar->id, PChar->GetName(), slotID, PItem->getID(), PItem->getSubID(), quantity, extra, charid, str(data[0x10]));
 
                     if (ret != SQL_ERROR && sql->AffectedRows() == 1 && charutils::UpdateItem(PChar, LOC_INVENTORY, invslot, -(int32)quantity))
                     {
@@ -3176,9 +3188,6 @@ void SmallPacket0x04D(map_session_data_t* const PSession, CCharEntity* const PCh
 
                 CItem* PItem = PChar->UContainer->GetItem(slotID);
 
-                // ShowInfo("FreeSlots %u", PChar->getStorage(LOC_INVENTORY)->GetFreeSlotsCount());
-                // ShowInfo("ItemId %u", PItem->getID());
-
                 if (!PItem->isType(ITEM_CURRENCY) && PChar->getStorage(LOC_INVENTORY)->GetFreeSlotsCount() == 0)
                 {
                     PChar->pushPacket(new CDeliveryBoxPacket(action, boxtype, PItem, slotID, PChar->UContainer->GetItemsCount(), 0xB9));
@@ -3265,7 +3274,7 @@ void SmallPacket0x04D(map_session_data_t* const PSession, CCharEntity* const PCh
                 return;
             }
 
-            int32 ret = sql->Query("SELECT accid FROM chars WHERE charname = '%s' LIMIT 1", data[0x10]);
+            int32 ret = sql->Query("SELECT accid FROM chars WHERE charname = '%s' LIMIT 1", str(data[0x10]));
 
             if (ret != SQL_ERROR && sql->NumRows() > 0 && sql->NextRow() == SQL_SUCCESS)
             {
@@ -3668,8 +3677,7 @@ void SmallPacket0x050(map_session_data_t* const PSession, CCharEntity* const PCh
     }
 
     charutils::EquipItem(PChar, slotID, equipSlotID, containerID); // current
-    charutils::SaveCharEquip(PChar);
-    charutils::SaveCharLook(PChar);
+    PChar->RequestPersist(CHAR_PERSIST::EQUIP);
     luautils::CheckForGearSet(PChar); // check for gear set on gear change
     PChar->UpdateHealth();
     PChar->retriggerLatentsAfterPacketParsing = true; // retrigger all latents after all equip packets are parsed
@@ -3701,8 +3709,7 @@ void SmallPacket0x051(map_session_data_t* const PSession, CCharEntity* const PCh
             charutils::EquipItem(PChar, slotID, equipSlotID, containerID);
         }
     }
-    charutils::SaveCharEquip(PChar);
-    charutils::SaveCharLook(PChar);
+    PChar->RequestPersist(CHAR_PERSIST::EQUIP);
     luautils::CheckForGearSet(PChar); // check for gear set on gear change
     PChar->UpdateHealth();
 }
@@ -3741,7 +3748,7 @@ void SmallPacket0x053(map_session_data_t* const PSession, CCharEntity* const PCh
     if (type == 0 && PChar->getStyleLocked()) // /lockstyle off (Turns off Lockstyle)
     {
         charutils::SetStyleLock(PChar, false);
-        charutils::SaveCharLook(PChar);
+        PChar->RequestPersist(CHAR_PERSIST::EQUIP);
     }
     else if (type == 1) // Login (Also appears on Zone)
     {
@@ -3822,12 +3829,14 @@ void SmallPacket0x053(map_session_data_t* const PSession, CCharEntity* const PCh
                     break;
             }
         }
-        charutils::SaveCharLook(PChar);
+        charutils::UpdateRemovedSlots(PChar);
+        PChar->RequestPersist(CHAR_PERSIST::EQUIP);
     }
     else if (type == 4) // /lockstyle on (Turns on Lockstyle)
     {
         charutils::SetStyleLock(PChar, true);
-        charutils::SaveCharLook(PChar);
+        charutils::UpdateRemovedSlots(PChar);
+        PChar->RequestPersist(CHAR_PERSIST::EQUIP);
     }
 
     if (type != 1 && type != 2)
@@ -4119,6 +4128,7 @@ void SmallPacket0x05E(map_session_data_t* const PSession, CCharEntity* const PCh
         if (zoneLineID == 1903324538)
         {
             uint16 destinationZone = PChar->getZone();
+
             // Note: zone zero actually exists but is unused in retail, we should stop using zero someday.
             // If zero, return to previous zone otherwise, determine the zone
             if (requestedZone != 0)
@@ -4142,30 +4152,38 @@ void SmallPacket0x05E(map_session_data_t* const PSession, CCharEntity* const PCh
                         break;
                 }
 
-                // Handle case for mog garden (Above addition does not work for this zone.)
+                // Handle case for mog garden (Above addition does not work for this zone)
                 if (requestedZone == 127)
                 {
                     destinationZone = ZONE_MOG_GARDEN;
                 }
-                else if (requestedZone == 125) // Go to second floor
+                else if (requestedZone == 126) // Go to first floor from second
+                {
+                    destinationZone = PChar->getZone();
+                }
+                else if (requestedZone == 125) // Go to second floor from first
                 {
                     destinationZone = PChar->getZone();
                 }
             }
 
-            bool moghouseExitRegular = requestedZone == 0 && PChar->m_moghouseID > 0;
-
-            auto startingRegion            = zoneutils::GetCurrentRegion(startingZone);
-            auto destinationRegion         = zoneutils::GetCurrentRegion(destinationZone);
-            auto moghouseExitRegions       = { REGION_TYPE::SANDORIA, REGION_TYPE::BASTOK, REGION_TYPE::WINDURST, REGION_TYPE::JEUNO, REGION_TYPE::WEST_AHT_URHGAN };
-            auto moghouseQuestComplete     = PChar->profile.mhflag & (town ? 0x01 << (town - 1) : 0);
-            bool moghouseExitQuestZoneline = moghouseQuestComplete && startingRegion == destinationRegion && PChar->m_moghouseID > 0 &&
-                                             std::any_of(moghouseExitRegions.begin(), moghouseExitRegions.end(),
-                                                         [&destinationRegion](REGION_TYPE acceptedReg)
-                                                         { return destinationRegion == acceptedReg; });
+            bool moghouseExitRegular          = requestedZone == 0 && PChar->m_moghouseID > 0;
+            bool requestedMoghouseFloorChange = startingZone == destinationZone && requestedZone >= 125 && requestedZone <= 127;
+            bool moghouse2FUnlocked           = PChar->profile.mhflag & 0x20;
+            auto startingRegion               = zoneutils::GetCurrentRegion(startingZone);
+            auto destinationRegion            = zoneutils::GetCurrentRegion(destinationZone);
+            auto moghouseExitRegions          = { REGION_TYPE::SANDORIA, REGION_TYPE::BASTOK, REGION_TYPE::WINDURST, REGION_TYPE::JEUNO, REGION_TYPE::WEST_AHT_URHGAN };
+            auto moghouseSameRegion           = std::any_of(moghouseExitRegions.begin(), moghouseExitRegions.end(),
+                                                            [&destinationRegion](REGION_TYPE acceptedReg)
+                                                            { return destinationRegion == acceptedReg; });
+            auto moghouseQuestComplete        = PChar->profile.mhflag & (town ? 0x01 << (town - 1) : 0);
+            bool moghouseExitQuestZoneline    = moghouseQuestComplete &&
+                                             startingRegion == destinationRegion &&
+                                             PChar->m_moghouseID > 0 &&
+                                             moghouseSameRegion &&
+                                             !requestedMoghouseFloorChange;
 
             bool moghouseExitMogGardenZoneline = destinationZone == ZONE_MOG_GARDEN && PChar->m_moghouseID > 0;
-            bool requestedMoghouseFloorChange  = startingZone == destinationZone;
 
             // Validate travel
             if (moghouseExitRegular || moghouseExitQuestZoneline || moghouseExitMogGardenZoneline)
@@ -4173,9 +4191,25 @@ void SmallPacket0x05E(map_session_data_t* const PSession, CCharEntity* const PCh
                 PChar->m_moghouseID    = 0;
                 PChar->loc.destination = destinationZone;
                 PChar->loc.p           = {};
-                if (requestedMoghouseFloorChange)
+
+                // Clear Moghouse 2F tracker flag
+                PChar->profile.mhflag &= ~(0x40);
+            }
+            else if (requestedMoghouseFloorChange)
+            {
+                PChar->loc.destination = destinationZone;
+                PChar->loc.p           = {};
+
+                if (moghouse2FUnlocked)
                 {
-                    PChar->profile.mhflag &= ~(0x40);
+                    // Toggle Moghouse 2F tracker flag
+                    PChar->profile.mhflag ^= 0x40;
+                }
+                else
+                {
+                    PChar->status = STATUS_TYPE::NORMAL;
+                    ShowWarning("SmallPacket0x05E: Moghouse 2F requested without it being unlocked: %s", PChar->GetName());
+                    return;
                 }
             }
             else
@@ -4267,6 +4301,7 @@ void SmallPacket0x05E(map_session_data_t* const PSession, CCharEntity* const PCh
         }
         ShowInfo("Zoning from zone %u to zone %u: %s", PChar->getZone(), PChar->loc.destination, PChar->GetName());
     }
+
     PChar->clearPacketList();
 
     if (PChar->loc.destination >= MAX_ZONEID)
@@ -4747,11 +4782,23 @@ void SmallPacket0x071(map_session_data_t* const PSession, CCharEntity* const PCh
                         if (sql->Query("DELETE FROM accounts_parties WHERE partyid = %u AND charid = %u;", PChar->id, id) == SQL_SUCCESS &&
                             sql->AffectedRows())
                         {
-                            ShowDebug("%s has removed %s from party", PChar->GetName(), data[0x0C]);
-                            uint8 removeData[8]{};
-                            ref<uint32>(removeData, 0) = PChar->PParty->GetPartyID();
-                            ref<uint32>(removeData, 4) = id;
-                            message::send(MSG_PT_RELOAD, removeData, sizeof removeData, nullptr);
+                            ShowDebug("%s has removed %s from party", PChar->GetName(), str(data[0x0C]));
+
+                            uint8 reloadData[4]{};
+                            if (PChar->PParty && PChar->PParty->m_PAlliance)
+                            {
+                                ref<uint32>(reloadData, 0) = PChar->PParty->m_PAlliance->m_AllianceID;
+                                message::send(MSG_ALLIANCE_RELOAD, reloadData, sizeof reloadData, nullptr);
+                            }
+                            else // No alliance, notify party.
+                            {
+                                ref<uint32>(reloadData, 0) = PChar->PParty->GetPartyID();
+                                message::send(MSG_PT_RELOAD, reloadData, sizeof reloadData, nullptr);
+                            }
+
+                            // Notify the player they were just kicked -- they are no longer in the DB and party/alliance reloads won't notify them.
+                            ref<uint32>(reloadData, 0) = id;
+                            message::send(MSG_PLAYER_KICK, reloadData, sizeof reloadData, nullptr);
                         }
                     }
                 }
@@ -4821,26 +4868,33 @@ void SmallPacket0x071(map_session_data_t* const PSession, CCharEntity* const PCh
                 }
                 if (!PVictim && PChar->PParty->m_PAlliance->getMainParty() == PChar->PParty)
                 {
-                    char victimName[31]{};
+                    char   victimName[31]{};
+                    uint32 allianceID = PChar->PParty->m_PAlliance->m_AllianceID;
+
                     sql->EscapeStringLen(victimName, (const char*)data[0x0C], std::min<size_t>(strlen((const char*)data[0x0C]), 15));
                     int32 ret = sql->Query("SELECT charid FROM chars WHERE charname = '%s';", victimName);
                     if (ret != SQL_ERROR && sql->NumRows() == 1 && sql->NextRow() == SQL_SUCCESS)
                     {
-                        uint32 id = sql->GetUIntData(0);
-                        ret       = sql->Query(
-                                  "SELECT partyid FROM accounts_parties WHERE charid = %u AND allianceid = %u AND partyflag & %d AND partyflag & %d", id,
-                                  PChar->PParty->m_PAlliance->m_AllianceID, PARTY_LEADER, PARTY_SECOND | PARTY_THIRD);
+                        uint32 charid = sql->GetUIntData(0);
+                        ret           = sql->Query(
+                                      "SELECT partyid FROM accounts_parties WHERE charid = %u AND allianceid = %u AND partyflag & %d",
+                                      charid, PChar->PParty->m_PAlliance->m_AllianceID, PARTY_LEADER | PARTY_SECOND | PARTY_THIRD);
                         if (ret != SQL_ERROR && sql->NumRows() == 1 && sql->NextRow() == SQL_SUCCESS)
                         {
+                            uint32 partyid = sql->GetUIntData(0);
                             if (sql->Query("UPDATE accounts_parties SET allianceid = 0, partyflag = partyflag & ~%d WHERE partyid = %u;",
-                                           PARTY_SECOND | PARTY_THIRD, id) == SQL_SUCCESS &&
+                                           PARTY_SECOND | PARTY_THIRD, partyid) == SQL_SUCCESS &&
                                 sql->AffectedRows())
                             {
-                                ShowDebug("%s has removed %s party from alliance", PChar->GetName(), data[0x0C]);
-                                uint8 removeData[8]{};
-                                ref<uint32>(removeData, 0) = PChar->PParty->GetPartyID();
-                                ref<uint32>(removeData, 4) = id;
+                                ShowDebug("%s has removed %s party from alliance", PChar->GetName(), str(data[0x0C]));
+                                // notify party they were removed
+                                uint8 removeData[4]{};
+                                ref<uint32>(removeData, 0) = partyid;
                                 message::send(MSG_PT_RELOAD, removeData, sizeof removeData, nullptr);
+
+                                // notify alliance a party was removed
+                                ref<uint32>(removeData, 0) = allianceID;
+                                message::send(MSG_ALLIANCE_RELOAD, removeData, sizeof removeData, nullptr);
                             }
                         }
                     }
@@ -5008,7 +5062,7 @@ void SmallPacket0x077(map_session_data_t* const PSession, CCharEntity* const PCh
                 char memberName[PacketNameLength] = {};
                 memcpy(&memberName, data[0x04], PacketNameLength - 1);
 
-                ShowDebug("(Party)Altering permissions of %s to %d", data[0x04], data[0x15]);
+                ShowDebug(fmt::format("(Party)Altering permissions of {} to {}", str(memberName), str(data[0x15])));
                 PChar->PParty->AssignPartyRole(memberName, data.ref<uint8>(0x15));
             }
         }
@@ -5044,11 +5098,15 @@ void SmallPacket0x077(map_session_data_t* const PSession, CCharEntity* const PCh
             if (PChar->PParty && PChar->PParty->m_PAlliance && PChar->PParty->GetLeader() == PChar &&
                 PChar->PParty->m_PAlliance->getMainParty() == PChar->PParty)
             {
-                ShowDebug("(Alliance)Changing leader to %s", data[0x04]);
-                PChar->PParty->m_PAlliance->assignAllianceLeader((const char*)data[0x04]);
-                uint8 leaderData[4]{};
-                ref<uint32>(leaderData, 0) = PChar->PParty->m_PAlliance->m_AllianceID;
-                message::send(MSG_PT_RELOAD, leaderData, sizeof leaderData, nullptr);
+                char memberName[PacketNameLength] = {};
+                memcpy(&memberName, data[0x04], PacketNameLength - 1);
+
+                ShowDebug(fmt::format("(Alliance)Changing leader to {}", str(memberName)));
+                PChar->PParty->m_PAlliance->assignAllianceLeader(str(data[0x04]).c_str());
+
+                uint8 allianceData[4]{};
+                ref<uint32>(allianceData, 0) = PChar->PParty->m_PAlliance->m_AllianceID;
+                message::send(MSG_ALLIANCE_RELOAD, allianceData, sizeof allianceData, nullptr);
             }
         }
         break;
@@ -5704,9 +5762,18 @@ void SmallPacket0x0B5(map_session_data_t* const PSession, CCharEntity* const PCh
                     if (PChar->PParty != nullptr)
                     {
                         int8 packetData[8]{};
-                        ref<uint32>(packetData, 0) = PChar->PParty->GetPartyID();
-                        ref<uint32>(packetData, 4) = PChar->id;
-                        message::send(MSG_CHAT_PARTY, packetData, sizeof packetData, new CChatMessagePacket(PChar, MESSAGE_PARTY, (const char*)data[6]));
+                        if(PChar->PParty->m_PAlliance)
+                        {
+                            ref<uint32>(packetData, 0) = PChar->PParty->m_PAlliance->m_AllianceID;
+                            ref<uint32>(packetData, 4) = PChar->id;
+                            message::send(MSG_CHAT_ALLIANCE, packetData, sizeof packetData, new CChatMessagePacket(PChar, MESSAGE_PARTY, (const char*)data[6]));
+                        }
+                        else
+                        {
+                            ref<uint32>(packetData, 0) = PChar->PParty->GetPartyID();
+                            ref<uint32>(packetData, 4) = PChar->id;
+                            message::send(MSG_CHAT_PARTY, packetData, sizeof packetData, new CChatMessagePacket(PChar, MESSAGE_PARTY, (const char*)data[6]));
+                        }
 
                         if (settings::get<bool>("map.AUDIT_CHAT") && settings::get<uint8>("map.AUDIT_PARTY"))
                         {
@@ -6151,20 +6218,62 @@ void SmallPacket0x0C4(map_session_data_t* const PSession, CCharEntity* const PCh
 
 /************************************************************************
  *                                                                       *
- *  Open/Close Mog House                                                 *
+ *  Mog House actions                                                    *
  *                                                                       *
  ************************************************************************/
 
 void SmallPacket0x0CB(map_session_data_t* const PSession, CCharEntity* const PChar, CBasicPacket data)
 {
     TracyZoneScoped;
-    if (data.ref<uint8>(0x04) == 1)
+
+    auto operation = data.ref<uint8>(0x04);
+    if (operation == 1)
     {
-        // open
+        // open mog house
     }
-    else if (data.ref<uint8>(0x04) == 2)
+    else if (operation == 2)
     {
-        // close
+        // close mog house
+    }
+    else if (operation == 5)
+    {
+        // remodel mog house
+        auto type = data.ref<uint8>(0x06); // Sandy: 103, Bastok: 104, Windy: 105, Patio: 106
+
+        if (type == 106 && !charutils::hasKeyItem(PChar, 3051))
+        {
+            ShowWarning(fmt::format("Player {} is trying to remodel to MH2F to Patio without owning the KI to unlock it.", PChar->GetName()));
+            return;
+        }
+
+        // 0x0080: This bit and the next track which 2F decoration style is being used (0: SANDORIA, 1: BASTOK, 2: WINDURST, 3: PATIO)
+        // 0x0100: ^ As above
+
+        // Extract original model and add 103 so it's in line with what comes in with the packet.
+        uint16 oldType = (uint8)(((PChar->profile.mhflag & 0x0100) + (PChar->profile.mhflag & 0x0080)) >> 7) + 103;
+
+        // Clear bits first
+        PChar->profile.mhflag &= ~(0x0080);
+        PChar->profile.mhflag &= ~(0x0100);
+
+        // Write new model bits
+        PChar->profile.mhflag |= ((type - 103) << 7);
+        charutils::SaveCharStats(PChar);
+
+        // TODO: Send message on successful remodel
+
+        // If the model changes AND you're on MH2F; force a rezone so the model change can take effect.
+        if (type != oldType && PChar->profile.mhflag & 0x0040)
+        {
+            auto zoneid = PChar->getZone();
+            auto ipp    = zoneutils::GetZoneIPP(zoneid);
+
+            PChar->loc.destination = zoneid;
+            PChar->status          = STATUS_TYPE::DISAPPEAR;
+
+            PChar->clearPacketList();
+            charutils::SendToZone(PChar, 2, ipp);
+        }
     }
     else
     {
@@ -6964,6 +7073,7 @@ void SmallPacket0x0FA(map_session_data_t* const PSession, CCharEntity* const PCh
 
     uint8 slotID      = data.ref<uint8>(0x06);
     uint8 containerID = data.ref<uint8>(0x07);
+    uint8 on2ndFloor  = data.ref<uint8>(0x08);
     uint8 col         = data.ref<uint8>(0x09);
     uint8 level       = data.ref<uint8>(0x0A);
     uint8 row         = data.ref<uint8>(0x0B);
@@ -6976,6 +7086,14 @@ void SmallPacket0x0FA(map_session_data_t* const PSession, CCharEntity* const PCh
 
     CItemFurnishing* PItem = (CItemFurnishing*)PChar->getStorage(containerID)->GetItem(slotID);
 
+    // Try to catch packet abuse, leading to gardening pots being placed on 2nd floor.
+    if (PItem->getOn2ndFloor() && PItem->isGardeningPot())
+    {
+        ShowWarning(fmt::format("{} has tried to gardening pot {} ({}) on 2nd floor",
+                                PChar->GetName(), PItem->getID(), PItem->getName()));
+        return;
+    }
+
     if (PItem != nullptr && PItem->getID() == ItemID && PItem->isType(ITEM_FURNISHING))
     {
         if (PItem->getFlag() & ITEM_FLAG_WALLHANGING)
@@ -6985,6 +7103,7 @@ void SmallPacket0x0FA(map_session_data_t* const PSession, CCharEntity* const PCh
 
         bool wasInstalled = PItem->isInstalled();
         PItem->setInstalled(true);
+        PItem->setOn2ndFloor(on2ndFloor);
         PItem->setCol(col);
         PItem->setRow(row);
         PItem->setLevel(level);
@@ -7025,6 +7144,7 @@ void SmallPacket0x0FA(map_session_data_t* const PSession, CCharEntity* const PCh
             }
             placedItems[i]->setOrder(placedItems[i]->getOrder() + 1);
         }
+
         // Set this item to being the most recently placed item
         PItem->setOrder(0);
 
@@ -7042,7 +7162,11 @@ void SmallPacket0x0FA(map_session_data_t* const PSession, CCharEntity* const PCh
 
         if (sql->Query(Query, extra, containerID, slotID, PChar->id) != SQL_ERROR && sql->AffectedRows() != 0 && !wasInstalled)
         {
-            PChar->getStorage(LOC_STORAGE)->AddBuff(PItem->getStorage());
+            // Storage mods only apply on the 1st floor
+            if (!PItem->getOn2ndFloor())
+            {
+                PChar->getStorage(LOC_STORAGE)->AddBuff(PItem->getStorage());
+            }
 
             PChar->pushPacket(new CInventorySizePacket(PChar));
 
@@ -7133,7 +7257,12 @@ void SmallPacket0x0FB(map_session_data_t* const PSession, CCharEntity* const PCh
                         charutils::MoveItem(PChar, LOC_STORAGE, SlotID, ERROR_SLOTID);
                     }
                 }
-                PChar->getStorage(LOC_STORAGE)->AddBuff(-(int8)PItem->getStorage());
+
+                // Storage mods only apply on the 1st floor
+                if (!PItem->getOn2ndFloor())
+                {
+                    PChar->getStorage(LOC_STORAGE)->AddBuff(-(int8)PItem->getStorage());
+                }
 
                 PChar->pushPacket(new CInventorySizePacket(PChar));
 
@@ -7183,6 +7312,13 @@ void SmallPacket0x0FC(map_session_data_t* const PSession, CCharEntity* const PCh
         return;
     }
 
+    if (!PPotItem->isGardeningPot())
+    {
+        ShowWarning(fmt::format("{} has tried to invalid gardening pot {} ({})",
+                                PChar->GetName(), PPotItem->getID(), PPotItem->getName()));
+        return;
+    }
+
     CItemContainer* PItemContainer = PChar->getStorage(containerID);
     CItem*          PItem          = PItemContainer->GetItem(slotID);
     if (PItem == nullptr || PItem->getQuantity() < 1)
@@ -7197,7 +7333,7 @@ void SmallPacket0x0FC(map_session_data_t* const PSession, CCharEntity* const PCh
         PPotItem->cleanPot();
         PPotItem->setPlant(CItemFlowerpot::getPlantFromSeed(itemID));
         PPotItem->setPlantTimestamp(CVanaTime::getInstance()->getVanaTime());
-        PPotItem->setStrength(xirand::GetRandomNumber(32));
+        PPotItem->setStrength(xirand::GetRandomNumber(33));
         gardenutils::GrowToNextStage(PPotItem);
     }
     else if (itemID >= 4096 && itemID <= 4111)
@@ -7328,6 +7464,14 @@ void SmallPacket0x0FE(map_session_data_t* const PSession, CCharEntity* const PCh
     CItemFlowerpot* PItem          = (CItemFlowerpot*)PItemContainer->GetItem(slotID);
     if (PItem == nullptr)
     {
+        return;
+    }
+
+    // Try to catch packet abuse, leading to gardening pots being placed on 2nd floor.
+    if (PItem->getOn2ndFloor() && PItem->isGardeningPot())
+    {
+        ShowWarning(fmt::format("{} has tried to uproot gardening pot {} ({}) on 2nd floor",
+                                PChar->GetName(), PItem->getID(), PItem->getName()));
         return;
     }
 
@@ -7499,8 +7643,7 @@ void SmallPacket0x100(map_session_data_t* const PSession, CCharEntity* const PCh
         charutils::BuildingCharAbilityTable(PChar);
         charutils::BuildingCharWeaponSkills(PChar);
         charutils::LoadJobChangeGear(PChar);
-        charutils::SaveCharEquip(PChar);
-        charutils::SaveCharLook(PChar);
+        PChar->RequestPersist(CHAR_PERSIST::EQUIP);
 
         PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_DISPELABLE | EFFECTFLAG_ROLL | EFFECTFLAG_ON_JOBCHANGE);
 

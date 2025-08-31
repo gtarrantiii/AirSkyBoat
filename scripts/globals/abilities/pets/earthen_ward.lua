@@ -2,7 +2,6 @@
 -- Earthen Ward
 -----------------------------------
 require("scripts/globals/mobskills")
-require("scripts/globals/msg")
 -----------------------------------
 local abilityObject = {}
 
@@ -11,10 +10,25 @@ abilityObject.onAbilityCheck = function(player, target, ability)
 end
 
 abilityObject.onPetAbility = function(target, pet, skill)
-    target:delStatusEffect(xi.effect.STONESKIN)
     local amount = pet:getMainLvl() * 2 + 50
-    target:addStatusEffect(xi.effect.STONESKIN, amount, 0, 900, 0, 0, 3)
-    skill:setMsg(xi.msg.basic.SKILL_GAIN_EFFECT)
+
+    -- if current stoneskin is from Earthen Ward then overwrite
+    -- need this logic here because Earthern Ward SS overwrites itself
+    -- while normal spell-based SS does not overwrite itself
+    local earthenWardTier = 3
+    if target:hasStatusEffect(xi.effect.STONESKIN) then
+        local status = target:getStatusEffect(xi.effect.STONESKIN)
+        if status:getTier() == earthenWardTier then
+            target:delStatusEffectSilent(xi.effect.STONESKIN)
+        end
+    end
+
+    if target:addStatusEffect(xi.effect.STONESKIN, amount, 0, 900, 0, 0, earthenWardTier) then
+        skill:setMsg(xi.msg.basic.SKILL_GAIN_EFFECT)
+    else
+        skill:setMsg(xi.msg.basic.SKILL_NO_EFFECT)
+    end
+
     return xi.effect.STONESKIN
 end
 

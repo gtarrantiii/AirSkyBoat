@@ -5,11 +5,8 @@
 -----------------------------------
 require('scripts/globals/interaction/quest')
 require('scripts/globals/weaponskillids')
-require('scripts/globals/keyitems')
 require('scripts/globals/npc_util')
 require('scripts/globals/quests')
-require('scripts/globals/status')
-require('scripts/globals/items')
 -----------------------------------
 local metalworksID = require('scripts/zones/Metalworks/IDs')
 local ziTahID = require('scripts/zones/The_Sanctuary_of_ZiTah/IDs')
@@ -141,7 +138,9 @@ quest.sections =
             ['Greenman'] =
             {
                 onMobDeath = function(mob, player, optParams)
-                    player:setLocalVar('killed_wsnm', 1)
+                    if player:hasKeyItem(xi.ki.MAP_TO_THE_ANNALS_OF_TRUTH) then
+                        player:setLocalVar('killed_wsnm', 1)
+                    end
                 end,
             },
         },

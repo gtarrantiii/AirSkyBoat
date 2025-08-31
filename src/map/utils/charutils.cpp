@@ -685,7 +685,7 @@ namespace charutils
             HP = sql->GetIntData(3);
             MP = sql->GetIntData(4);
 
-            PChar->profile.mhflag = (uint8)sql->GetIntData(5);
+            PChar->profile.mhflag = (uint16)sql->GetIntData(5);
             PChar->profile.title  = (uint16)sql->GetIntData(6);
 
             int8* bazaarMessage = sql->GetData(7);
@@ -1820,8 +1820,8 @@ namespace charutils
                     if (((CItemWeapon*)PItem)->getSkillType() != SKILL_STRING_INSTRUMENT && ((CItemWeapon*)PItem)->getSkillType() != SKILL_WIND_INSTRUMENT)
                     {
                         PChar->health.tp = 0;
+                        PChar->StatusEffectContainer->DelStatusEffect(EFFECT_AFTERMATH);
                     }
-                    PChar->StatusEffectContainer->DelStatusEffect(EFFECT_AFTERMATH);
                     BuildingCharWeaponSkills(PChar);
                     UpdateWeaponStyle(PChar, equipSlotID, nullptr);
                 }
@@ -2392,6 +2392,58 @@ namespace charutils
         }
     }
 
+    void UpdateRemovedSlots(CCharEntity* PChar)
+    {
+        if (!PChar || !PChar->getStyleLocked())
+        {
+            return;
+        }
+
+        auto items = PChar->styleItems;
+        for (auto i = 0; i < 16; i++)
+        {
+            if (items[i] == 0)
+            {
+                continue;
+            }
+
+            auto PItem = dynamic_cast<CItemEquipment*>(itemutils::GetItem(items[i]));
+            if (!PItem)
+            {
+                continue;
+            }
+
+            auto removeSlotID = PItem->getRemoveSlotId();
+            if (removeSlotID > 0)
+            {
+                for (auto i = 4u; i <= 8u; i++)
+                {
+                    if (removeSlotID & (1 << i))
+                    {
+                        switch (i)
+                        {
+                            case SLOT_HEAD:
+                                PChar->mainlook.head = PItem->getModelId();
+                                break;
+                            case SLOT_BODY:
+                                PChar->mainlook.body = PItem->getModelId();
+                                break;
+                            case SLOT_HANDS:
+                                PChar->mainlook.hands = PItem->getModelId();
+                                break;
+                            case SLOT_LEGS:
+                                PChar->mainlook.legs = PItem->getModelId();
+                                break;
+                            case SLOT_FEET:
+                                PChar->mainlook.feet = PItem->getModelId();
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     void AddItemToRecycleBin(CCharEntity* PChar, uint32 container, uint8 slotID, uint8 quantity)
     {
         CItem*      PItem          = PChar->getStorage(container)->GetItem(slotID);
@@ -2602,6 +2654,13 @@ namespace charutils
                 PChar->pushPacket(new CMessageBasicPacket(PChar, PChar, 0, 0, 0x200));
                 return;
             }
+
+            // Disallow everything but shields if you're using H2H
+            // Equipping a shield will unequip the H2H weapon and you will go barefisted with a shield
+            if (PMainItem && PMainItem->getSkillType() == SKILL_HAND_TO_HAND)
+            {
+                return;
+            }
         }
 
         if (slotID == 0)
@@ -2667,6 +2726,7 @@ namespace charutils
             {
                 // If the weapon ISN'T a wind based instrument or a string based instrument
                 PChar->health.tp = 0;
+                PChar->StatusEffectContainer->DelStatusEffect(EFFECT_AFTERMATH);
             }
 
             if (!PChar->getEquip(SLOT_MAIN) || !PChar->getEquip(SLOT_MAIN)->isType(ITEM_EQUIPMENT) ||
@@ -2675,7 +2735,6 @@ namespace charutils
                 CheckUnarmedWeapon(PChar);
             }
 
-            PChar->StatusEffectContainer->DelStatusEffect(EFFECT_AFTERMATH);
             BuildingCharWeaponSkills(PChar);
             PChar->pushPacket(new CCharAbilitiesPacket(PChar));
         }
@@ -2742,8 +2801,7 @@ namespace charutils
         PChar->pushPacket(new CCharAppearancePacket(PChar));
 
         BuildingCharWeaponSkills(PChar);
-        SaveCharEquip(PChar);
-        SaveCharLook(PChar);
+        PChar->RequestPersist(CHAR_PERSIST::EQUIP);
     }
 
     void RemoveAllEquipment(CCharEntity* PChar)
@@ -2763,8 +2821,7 @@ namespace charutils
         CheckUnarmedWeapon(PChar);
 
         BuildingCharWeaponSkills(PChar);
-        SaveCharEquip(PChar);
-        SaveCharLook(PChar);
+        PChar->RequestPersist(CHAR_PERSIST::EQUIP);
     }
 
     /************************************************************************
@@ -3243,7 +3300,7 @@ namespace charutils
 
         PChar->delModifier(Mod::MEVA, PChar->m_magicEvasion);
 
-        PChar->m_magicEvasion = battleutils::GetMaxSkill(12, PChar->GetMLevel());
+        PChar->m_magicEvasion = battleutils::GetMaxSkill(12, PChar->GetMLevel()); // Player MEVA is Rank G
         PChar->addModifier(Mod::MEVA, PChar->m_magicEvasion);
     }
 
@@ -4921,6 +4978,10 @@ namespace charutils
             exploss = (uint16)(exploss * settings::get<float>("map.EXP_LOSS_RATE"));
         }
 
+        // Save exp lost.
+        PChar->setCharVar("expLost", exploss);
+
+        // Handle deleveling
         if (PChar->jobs.exp[PChar->GetMJob()] < exploss)
         {
             if (PChar->jobs.job[PChar->GetMJob()] > 1)
@@ -6098,7 +6159,6 @@ namespace charutils
         // Days start at 0 and the 0th day is Firesday
         // Affinity starts at 0 and the 0th affinity is FIRE_AFFINITY
         // petElement and petElementIdx exist to bridge these gaps here!
-
         auto*   PPet             = static_cast<CPetEntity*>(PChar->PPet);
         ELEMENT petElement       = static_cast<ELEMENT>(PPet->m_Element);
         uint8   petElementIdx    = static_cast<uint8>(petElement) - 1;
@@ -6113,6 +6173,12 @@ namespace charutils
 
         static const WEATHER weatherStrong[8] = { WEATHER_HOT_SPELL, WEATHER_SNOW, WEATHER_WIND, WEATHER_DUST_STORM,
                                                   WEATHER_THUNDER, WEATHER_RAIN, WEATHER_AURORAS, WEATHER_GLOOM };
+
+        // Fire Spirit through Dark Spirit
+        if (PPet->m_PetID <= PETID_DARKSPIRIT)
+        {
+            perpReduction += PChar->PMeritPoints->GetMeritValue(MERIT_ELEMENTAL_PERP_REDUCTION, PChar);
+        }
 
         // If you wear a fire staff, you have +2 perp affinity reduction for fire, but -2 for ice as mods.
         perpReduction += PChar->getMod(strong[petElementIdx]);

@@ -629,6 +629,15 @@ void CZone::updateCharLevelRestriction(CCharEntity* PChar)
 
     if (m_levelRestriction != 0)
     {
+        // remove buffs in level cap zones as well (such as riverne sites)
+        PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_DISPELABLE, true);
+        PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_ERASABLE, true);
+        PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_ATTACK, true);
+        PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_ON_ZONE, true);
+        PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_SONG, true);
+        PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_ROLL, true);
+        PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_SYNTH_SUPPORT, true);
+        PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_BLOODPACT, true);
         PChar->StatusEffectContainer->AddStatusEffect(new CStatusEffect(EFFECT_LEVEL_RESTRICTION, EFFECT_LEVEL_RESTRICTION, m_levelRestriction, 0, 0));
     }
 
@@ -1196,6 +1205,8 @@ void CZone::CharZoneOut(CCharEntity* PChar)
         PChar->StatusEffectContainer->DelStatusEffectSilent(EFFECT_LEVEL_RESTRICTION);
     }
 
+    PChar->StatusEffectContainer->DelStatusEffectsByFlag(EFFECTFLAG_ON_ZONE);
+
     if (PChar->PLinkshell1 != nullptr)
     {
         PChar->PLinkshell1->DelMember(PChar);
@@ -1243,8 +1254,17 @@ void CZone::CharZoneOut(CCharEntity* PChar)
     if (PChar->PParty && PChar->loc.destination != 0 && PChar->m_moghouseID == 0)
     {
         uint8 data[4]{};
-        ref<uint32>(data, 0) = PChar->PParty->GetPartyID();
-        message::send(MSG_PT_RELOAD, data, sizeof data, nullptr);
+
+        if (PChar->PParty->m_PAlliance)
+        {
+            ref<uint32>(data, 0) = PChar->PParty->m_PAlliance->m_AllianceID;
+            message::send(MSG_ALLIANCE_RELOAD, data, sizeof data, nullptr);
+        }
+        else
+        {
+            ref<uint32>(data, 0) = PChar->PParty->GetPartyID();
+            message::send(MSG_PT_RELOAD, data, sizeof data, nullptr);
+        }
     }
 
     if (PChar->PParty)

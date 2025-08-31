@@ -3,7 +3,6 @@
 --   NM: Provoker
 -----------------------------------
 mixins = { require("scripts/mixins/families/empty_terroanima") }
-require("scripts/globals/status")
 require("scripts/globals/magic")
 -----------------------------------
 local entity = {}
@@ -12,6 +11,10 @@ entity.onMobInitialize = function(mob)
     mob:addMod(xi.mod.ACC, 50)
     mob:setMobMod(xi.mobMod.IDLE_DESPAWN, 180)
     mob:setMobMod(xi.mobMod.ADD_EFFECT, 1)
+end
+
+entity.onMobEngaged = function(mob, target)
+    mob:setLocalVar("changeTime", 0)
 end
 
 entity.onMobFight = function(mob, target)

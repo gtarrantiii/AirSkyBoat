@@ -12,10 +12,8 @@
 -- Fossil Rocks      : !pos 17 18 184 198
 -- Mahogany Door     : !pos -11 0 20 192
 -- House of the Hero : !pos -26 -13 260 239
-require('scripts/globals/items')
 require('scripts/globals/missions')
 require('scripts/globals/npc_util')
-require('scripts/globals/keyitems')
 require('scripts/globals/interaction/mission')
 require('scripts/globals/zone')
 -----------------------------------
@@ -165,7 +163,7 @@ mission.sections =
         },
     },
 
-    -- Speak to Nanaa Mihgo in Windurst Woods (neat Home Point #1).
+    -- Speak to Nanaa Mihgo in Windurst Woods (near Home Point #1).
     {
         check = function(player, currentMission, missionStatus)
             return currentMission == mission.missionId and missionStatus == 2
@@ -178,6 +176,11 @@ mission.sections =
             onEventFinish =
             {
                 [165] = function(player, csid, option, npc)
+                    -- "Refuse"
+                    if option == 2 then
+                        return
+                    end
+
                     npcUtil.giveKeyItem(player, xi.ki.LAPIS_MONOCLE)
                     mission:setVar(player, "Rock", mazeID.npc.FOSSIL_ROCKS[math.random(#mazeID.npc.FOSSIL_ROCKS)])
                     player:setMissionStatus(mission.areaId, 3)

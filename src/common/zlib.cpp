@@ -62,9 +62,17 @@ static void swap32_if_be(const uint32* v, const size_t memb)
 #endif
 }
 
+struct fclose_deleter
+{
+    void operator()(FILE* f) const
+    {
+        fclose(f);
+    }
+};
+
 static bool read_to_vector(std::string const& file, std::vector<uint32>& vec)
 {
-    std::unique_ptr<FILE, decltype(&fclose)> fp(fopen(file.c_str(), "rb"), &fclose);
+    std::unique_ptr<FILE, fclose_deleter> fp(fopen(file.c_str(), "rb"));
     if (!fp)
     {
         ShowCritical("zlib: can't open file <%s>", file.c_str());
@@ -117,7 +125,7 @@ static void populate_jump_table(std::vector<struct zlib_jump>& jump, const std::
 int32 zlib_init()
 {
     std::vector<uint32> dec;
-    if (!read_to_vector("compress.dat", zlib.enc) || !read_to_vector("decompress.dat", dec))
+    if (!read_to_vector("res/compress.dat", zlib.enc) || !read_to_vector("res/decompress.dat", dec))
     {
         return -1;
     }

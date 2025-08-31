@@ -3,7 +3,6 @@
 -----------------------------------
 local ID = require('scripts/zones/Meriphataud_Mountains_[S]/IDs')
 require('scripts/globals/chocobo')
-require('scripts/globals/status')
 -----------------------------------
 local zoneObject = {}
 
@@ -30,14 +29,16 @@ zoneObject.onTriggerAreaEnter = function(player, triggerArea)
 end
 
 zoneObject.onGameHour = function(zone)
-    local npc = GetNPCByID(ID.npc.INDESCRIPT_MARKINGS)
-    local hour = VanadielHour()
+    if xi.settings.main.ENABLE_WOTG == 1 then
+        local npc = GetNPCByID(ID.npc.INDESCRIPT_MARKINGS)
+        local hour = VanadielHour()
 
-    if npc then
-        if hour == 17 then
-            npc:setStatus(xi.status.DISAPPEAR)
-        elseif hour == 7 then
-            npc:setStatus(xi.status.NORMAL)
+        if npc then
+            if hour == 17 then
+                npc:setStatus(xi.status.DISAPPEAR)
+            elseif hour == 7 then
+                npc:setStatus(xi.status.NORMAL)
+            end
         end
     end
 end

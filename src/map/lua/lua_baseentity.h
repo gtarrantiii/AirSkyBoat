@@ -100,10 +100,10 @@ public:
     bool didGetMessage();                // Used by interaction framework to determine if player triggered something else
     void resetGotMessage();              // Used by interaction framework to reset if player triggered something else
 
-    void  setFlag(uint32 flags);
-    uint8 getMoghouseFlag();
-    void  setMoghouseFlag(uint8 flag);
-    bool  needToZone(sol::object const& arg0); // Check if player has zoned since the flag has been raised
+    void   setFlag(uint32 flags);
+    uint16 getMoghouseFlag();
+    void   setMoghouseFlag(uint16 flag);
+    bool   needToZone(sol::object const& arg0); // Check if player has zoned since the flag has been raised
 
     // Object Identification
     uint32 getID();
@@ -126,6 +126,7 @@ public:
     bool  canUseAbilities();
 
     void lookAt(sol::object const& arg0, sol::object const& arg1, sol::object const& arg2); // look at given position
+    void facePlayer(CLuaBaseEntity* PLuaBaseEntity, sol::object const& nonGlobal);          // specifically rotates target to player direction
     void clearTargID();                                                                     // clears target of entity
 
     bool  atPoint(sol::variadic_args va);                                          // is at given point
@@ -134,7 +135,7 @@ public:
     bool  isFollowingPath();                                                       // checks if the entity is following a path
     void  clearPath(sol::object const& pauseObj);                                  // removes current pathfind and stops moving
     void  continuePath();                                                          // resumes previous pathfind if it was paused
-    float checkDistance(sol::variadic_args va);                                    // Check Distacnce and returns distance number
+    float checkDistance(sol::variadic_args va);                                    // Check Distance and returns distance number
     void  wait(sol::object const& milliseconds);                                   // make the npc wait a number of ms and then back into roam
     // int32 WarpTo(lua_Stat* L);           // warp to the given point -- These don't exist, breaking them just in case someone uncomments
     // int32 RoamAround(lua_Stat* L);       // pick a random point to walk to
@@ -180,6 +181,8 @@ public:
 
     uint32 getPlayerTriggerAreaInZone();                                                      // Returns the player's current trigger area in the zone.
     void   updateToEntireZone(uint8 statusID, uint8 animation, sol::object const& matchTime); // Forces an update packet to update the NPC entity zone-wide
+
+    void sendEntityUpdateToPlayer(CLuaBaseEntity* entityToUpdate, uint8 entityUpdate, uint8 updateMask); // sends a specific entity's update packet to a specific player only
 
     auto  getPos() -> sol::table;      // Get Entity position (x,y,z)
     void  showPosition();              // Display current position of character
@@ -266,12 +269,11 @@ public:
     uint8  getGender();              // Returns the player character's gender
     auto   getName() -> std::string; // Gets Entity Name
     auto   getPacketName() -> std::string;
-    void   renameEntity(std::string const& newName);
+    void   renameEntity(std::string const& newName, sol::object const& arg2);
     void   hideName(bool isHidden);
     bool   checkNameFlags(uint32 flags); // this is check and not get because it tests for a flag, it doesn't return all flags
     uint16 getModelId();
     void   setModelId(uint16 modelId, sol::object const& slotObj);
-    void   updateLook();
     void   restoreNpcLook();
     void   setCostume(uint16 costume);
     uint16 getCostume();
@@ -551,6 +553,8 @@ public:
     bool  isInDynamis();                                                                                                           // If player is in Dynamis return true else false
     void  setEnteredBattlefield(bool entered);                                                                                     // Sets if the player has entered into a battlefield or not
     bool  hasEnteredBattlefield();                                                                                                 // If the player has entered into a battlefield return true else false
+    void  sendTimerPacket(uint32 seconds);
+    void  sendClearTimerPacket();
 
     // Battle Utilities
     bool isAlive();
@@ -558,6 +562,7 @@ public:
     void sendRaise(uint8 raiseLevel);
     void sendReraise(uint8 raiseLevel);
     void sendTractor(float xPos, float yPos, float zPos, uint8 rotation);
+    void allowSendRaisePrompt();
 
     void countdown(sol::object const& secondsObj,
                    sol::object const& bar1NameObj, sol::object const& bar1ValObj,
@@ -788,7 +793,7 @@ public:
 
     // Mob Entity-Specific
     void   setMobLevel(uint8 level);
-    uint8  getSystem(); // TODO: rename this to getEcosystem()
+    uint8  getEcosystem();
     uint16 getSuperFamily();
     uint16 getFamily();
     bool   isMobType(uint8 mobType); // True if mob is of type passed to function
@@ -856,11 +861,13 @@ public:
 
     bool actionQueueEmpty(); // returns whether the action queue is empty or not
 
-    void  castSpell(sol::object const& spell, sol::object entity);                                                                                                                                           // forces a mob to cast a spell (parameter = spell ID, otherwise picks a spell from its list)
-    void  useJobAbility(uint16 skillID, sol::object const& pet);                                                                                                                                             // forces a job ability use (players/pets only)
-    void  useMobAbility(sol::variadic_args va);                                                                                                                                                              // forces a mob to use a mobability (parameter = skill ID)
+    void  castSpell(sol::object const& spell, sol::object const& entity); // forces a mob to cast a spell (parameter = spell ID, otherwise picks a spell from its list)
+    void  useJobAbility(uint16 skillID, sol::object const& pet);          // forces a job ability use (players/pets only)
+    void  useMobAbility(sol::variadic_args va);                           // forces a mob to use a mobability (parameter = skill ID)
+    auto  getAbilityDistance(uint16 skillID) -> float;
     int32 triggerDrawIn(CLuaBaseEntity* PMobEntity, sol::object const& includePt, sol::object const& drawRange, sol::object const& maxReach, sol::object const& target, sol::object const& incDeadAndMount); // forces a mob to draw in target
     bool  hasTPMoves();
+    void  drawIn(sol::variadic_args va); // Forces a mob to draw-in (without regard to draw-in distance) the specified target, or its current target with no args
 
     void weaknessTrigger(uint8 level);
     void restoreFromChest(CLuaBaseEntity* PLuaBaseEntity, uint32 restoreType);
@@ -926,6 +933,9 @@ public:
     void   giveContestReward(uint16 contestId);
     auto   getAwardHistory() -> sol::table;
     void   faceTarget(CLuaBaseEntity* npc);
+
+    void addPacketMod(uint16 packetId, uint16 offset, uint8 value);
+    void clearPacketMods();
 
     static void Register();
 };

@@ -3,9 +3,6 @@
 -- Drain functions only on skill level!!
 -----------------------------------
 require("scripts/globals/magic")
-require("scripts/globals/status")
-require("scripts/globals/settings")
-require("scripts/globals/msg")
 -----------------------------------
 local spellObject = {}
 
@@ -50,12 +47,13 @@ spellObject.onSpellCast = function(caster, target, spell)
         return 0
     end
 
-    -- Don't drain more HP than the target has left
-    if target:getHP() < dmg then
-        dmg = target:getHP()
-    end
-
     dmg = xi.magic.finalMagicAdjustments(caster, target, spell, dmg)
+
+    local targetHP = target:getHP()
+    -- Don't drain more HP than the target has left
+    if targetHP < dmg then
+        dmg = targetHP
+    end
 
     spell:setMsg(xi.msg.basic.MAGIC_DRAIN_HP, math.min(dmg, hpDiff))
 

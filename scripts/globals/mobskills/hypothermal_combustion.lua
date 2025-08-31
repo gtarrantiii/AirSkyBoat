@@ -6,8 +6,6 @@
 -- Notes: Damage is based on remaining HP
 -----------------------------------
 require("scripts/globals/mobskills")
-require("scripts/globals/settings")
-require("scripts/globals/status")
 -----------------------------------
 local mobskillObject = {}
 
@@ -25,6 +23,7 @@ mobskillObject.onMobWeaponSkill = function(target, mob, skill)
     local dmg = xi.mobskills.mobFinalAdjustments(info.dmg, mob, skill, target, xi.attackType.MAGICAL, xi.damageType.ICE, xi.mobskills.shadowBehavior.IGNORE_SHADOWS)
 
     mob:setHP(0)
+    mob:setLocalVar("gameover", 1)
     target:takeDamage(dmg, mob, xi.attackType.MAGICAL, xi.damageType.ICE)
     return dmg
 end

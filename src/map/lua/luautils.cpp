@@ -130,9 +130,6 @@ void ReportErrorToPlayer(CBaseEntity* PEntity, std::string const& message = "") 
 
 namespace luautils
 {
-    bool                                  contentRestrictionEnabled;
-    std::unordered_map<std::string, bool> contentEnabledMap;
-
     std::unique_ptr<Filewatcher> filewatcher;
 
     std::unordered_map<uint32, sol::table> customMenuContext;
@@ -338,8 +335,6 @@ namespace luautils
         }
 
         // Handle settings
-        contentRestrictionEnabled = settings::get<bool>("main.RESTRICT_CONTENT");
-
         moduleutils::LoadLuaModules();
 
         filewatcher = std::make_unique<Filewatcher>(std::vector<std::string>{ "scripts", "modules" });
@@ -1850,20 +1845,8 @@ namespace luautils
             std::string contentVariable("ENABLE_");
             contentVariable.append(contentTag);
 
-            bool contentEnabled;
-
-            if (auto contentEnabledIter = contentEnabledMap.find(contentVariable); contentEnabledIter != contentEnabledMap.end())
-            {
-                contentEnabled = contentEnabledIter->second;
-            }
-            else
-            {
-                // Cache contentTag lookups in a map so that we don't re-hit the Lua file every time
-                contentEnabled = settings::get<bool>(fmt::format("main.{}", contentVariable));
-
-                contentEnabledMap[contentVariable] = contentEnabled;
-            }
-
+            bool contentEnabled            = settings::get<bool>(fmt::format("main.{}", contentVariable));
+            bool contentRestrictionEnabled = settings::get<bool>("main.RESTRICT_CONTENT");
             if (!contentEnabled && contentRestrictionEnabled)
             {
                 return false;
@@ -2499,9 +2482,9 @@ namespace luautils
             return -1;
         }
 
-        Action->additionalEffect = (SUBEFFECT)(result.get_type(0) == sol::type::number ? result.get<int32>(0) : 0);
-        Action->addEffectMessage = result.get_type(1) == sol::type::number ? result.get<int32>(1) : 0;
-        Action->addEffectParam   = result.get_type(2) == sol::type::number ? result.get<int32>(2) : 0;
+        Action->spikesEffect  = (SUBEFFECT)(result.get_type(0) == sol::type::number ? result.get<int32>(0) : 0);
+        Action->spikesMessage = result.get_type(1) == sol::type::number ? result.get<int32>(1) : 0;
+        Action->spikesParam   = result.get_type(2) == sol::type::number ? result.get<int32>(2) : 0;
 
         return 0;
     }
@@ -5526,7 +5509,7 @@ namespace luautils
             return;
         }
 
-        auto result = onFurniturePlaced(CLuaBaseEntity(PChar));
+        auto result = onFurniturePlaced(CLuaBaseEntity(PChar), CLuaItem(PItem));
         if (!result.valid())
         {
             sol::error err = result;
@@ -5548,7 +5531,7 @@ namespace luautils
             return;
         }
 
-        auto result = onFurnitureRemoved(CLuaBaseEntity(PChar));
+        auto result = onFurnitureRemoved(CLuaBaseEntity(PChar), CLuaItem(PItem));
         if (!result.valid())
         {
             sol::error err = result;

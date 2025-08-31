@@ -235,7 +235,7 @@ enum ZONEID : uint16
     ZONE_DYNAMIS_BASTOK                 = 186,
     ZONE_DYNAMIS_WINDURST               = 187,
     ZONE_DYNAMIS_JEUNO                  = 188,
-    ZONE_189                            = 189, // Southern San d'Oria [S] Residential Area
+    ZONE_OUTER_RAKAZNAR_U3              = 189,
     ZONE_KING_RANPERRES_TOMB            = 190,
     ZONE_DANGRUF_WADI                   = 191,
     ZONE_INNER_HORUTOTO_RUINS           = 192,
@@ -245,7 +245,7 @@ enum ZONEID : uint16
     ZONE_GUSGEN_MINES                   = 196,
     ZONE_CRAWLERS_NEST                  = 197,
     ZONE_MAZE_OF_SHAKHRAMI              = 198,
-    ZONE_199                            = 199, // Bastok Markets [S] Residential Area
+    ZONE_199                            = 199,
     ZONE_GARLAIGE_CITADEL               = 200,
     ZONE_CLOISTER_OF_GALES              = 201,
     ZONE_CLOISTER_OF_STORMS             = 202,
@@ -260,12 +260,12 @@ enum ZONEID : uint16
     ZONE_CLOISTER_OF_TIDES              = 211,
     ZONE_GUSTAV_TUNNEL                  = 212,
     ZONE_LABYRINTH_OF_ONZOZO            = 213,
-    ZONE_214                            = 214, // Aht Urhgan Residential Area
+    ZONE_214                            = 214,
     ZONE_ABYSSEA_ATTOHWA                = 215,
     ZONE_ABYSSEA_MISAREAUX              = 216,
     ZONE_ABYSSEA_VUNKERL                = 217,
     ZONE_ABYSSEA_ALTEPA                 = 218,
-    ZONE_219                            = 219, // Windurst Waters [S] Residential Area
+    ZONE_219                            = 219,
     ZONE_SHIP_BOUND_FOR_SELBINA         = 220,
     ZONE_SHIP_BOUND_FOR_MHAURA          = 221,
     ZONE_PROVENANCE                     = 222,
@@ -324,7 +324,7 @@ enum ZONEID : uint16
     ZONE_OUTER_RAKAZNAR_U1              = 275,
     ZONE_RAKAZNAR_INNER_COURT           = 276,
     ZONE_RAKAZNAR_TURRIS                = 277,
-    ZONE_278                            = 278,
+    ZONE_GWORA_CORRIDOR                 = 278,
     ZONE_WALK_OF_ECHOES_P2              = 279,
     ZONE_MOG_GARDEN                     = 280,
     ZONE_LEAFALLIA                      = 281,
@@ -345,8 +345,10 @@ enum ZONEID : uint16
     ZONE_DYNAMIS_WINDURST_D             = 296,
     ZONE_DYNAMIS_JEUNO_D                = 297,
     ZONE_WALK_OF_ECHOES_P1              = 298,
-    MAX_ZONEID                          = 299,
+    ZONE_GWORA_THRONE_ROOM              = 299,
+    MAX_ZONEID                          = 300,
 };
+DECLARE_FORMAT_AS_UNDERLYING(ZONEID);
 
 enum NATION_TYPE : uint8
 {
@@ -356,6 +358,7 @@ enum NATION_TYPE : uint8
     NATION_BEASTMEN = 0x03,
     NATION_NEUTRAL  = 0xFF,
 };
+DECLARE_FORMAT_AS_UNDERLYING(NATION_TYPE);
 
 enum class REGION_TYPE : uint8
 {
@@ -408,6 +411,7 @@ enum class REGION_TYPE : uint8
 
     UNKNOWN = 255
 };
+DECLARE_FORMAT_AS_UNDERLYING(REGION_TYPE);
 
 enum class CONTINENT_TYPE : uint8
 {
@@ -416,6 +420,7 @@ enum class CONTINENT_TYPE : uint8
     THE_SHADOWREIGN_ERA    = 3,
     OTHER_AREAS            = 4
 };
+DECLARE_FORMAT_AS_UNDERLYING(CONTINENT_TYPE);
 
 enum class ZONE_TYPE : uint8
 {
@@ -427,6 +432,7 @@ enum class ZONE_TYPE : uint8
     DYNAMIS           = 5,
     DUNGEON_INSTANCED = 6,
 };
+DECLARE_FORMAT_AS_UNDERLYING(ZONE_TYPE);
 
 enum GLOBAL_MESSAGE_TYPE
 {
@@ -435,6 +441,7 @@ enum GLOBAL_MESSAGE_TYPE
     CHAR_INSHOUT,
     CHAR_INZONE
 };
+DECLARE_FORMAT_AS_UNDERLYING(GLOBAL_MESSAGE_TYPE);
 
 enum class TELEPORT_TYPE : uint8
 {
@@ -452,6 +459,7 @@ enum class TELEPORT_TYPE : uint8
     WAYPOINT        = 11,
     ESCHAN_PORTAL   = 12,
 };
+DECLARE_FORMAT_AS_UNDERLYING(TELEPORT_TYPE);
 
 enum ZONEMISC
 {
@@ -471,6 +479,7 @@ enum ZONEMISC
     MISC_LOS_PLAYER_BLOCK = 0x1000, // Players can't use magic/JAs through walls if this is set
     MISC_LOS_OFF          = 0x2000, // Zone should not have LoS checks
 };
+DECLARE_FORMAT_AS_UNDERLYING(ZONEMISC);
 
 struct zoneMusic_t
 {

@@ -2,7 +2,6 @@
 -- Zone: Vunkerl_Inlet_[S] (83)
 -----------------------------------
 local ID = require('scripts/zones/Vunkerl_Inlet_[S]/IDs')
-require('scripts/globals/status')
 -----------------------------------
 local zoneObject = {}
 
@@ -24,27 +23,31 @@ zoneObject.onZoneIn = function(player, prevZone)
 end
 
 zoneObject.onZoneWeatherChange = function(weather)
-    local npc = GetNPCByID(ID.npc.INDESCRIPT_MARKINGS) -- Indescript Markings
+    if xi.settings.main.ENABLE_WOTG == 1 then
+        local npc = GetNPCByID(ID.npc.INDESCRIPT_MARKINGS) -- Indescript Markings
 
-    if npc ~= nil then
-        if weather == xi.weather.FOG or weather == xi.weather.THUNDER then
-            npc:setStatus(xi.status.DISAPPEAR)
-        elseif VanadielHour() >= 16 or VanadielHour() <= 6 then
-            npc:setStatus(xi.status.NORMAL)
+        if npc ~= nil then
+            if weather == xi.weather.FOG or weather == xi.weather.THUNDER then
+                npc:setStatus(xi.status.DISAPPEAR)
+            elseif VanadielHour() >= 16 or VanadielHour() <= 6 then
+                npc:setStatus(xi.status.NORMAL)
+            end
         end
     end
 end
 
 zoneObject.onGameHour = function(zone)
-    local npc = GetNPCByID(ID.npc.INDESCRIPT_MARKINGS) -- Indescript Markings
+    if xi.settings.main.ENABLE_WOTG == 1 then
+        local npc = GetNPCByID(ID.npc.INDESCRIPT_MARKINGS) -- Indescript Markings
 
-    if npc ~= nil then
-        if VanadielHour() == 16 then
-            npc:setStatus(xi.status.DISAPPEAR)
-        end
+        if npc ~= nil then
+            if VanadielHour() == 16 then
+                npc:setStatus(xi.status.DISAPPEAR)
+            end
 
-        if VanadielHour() == 6 then
-            npc:setStatus(xi.status.NORMAL)
+            if VanadielHour() == 6 then
+                npc:setStatus(xi.status.NORMAL)
+            end
         end
     end
 end

@@ -545,6 +545,7 @@ enum class Mod
     CARBUNCLE_LVL_BONUS       = 1041, // Carbuncle: Lv.+ (Increases Carbuncle's base level above 99)
     CAIT_SITH_LVL_BONUS       = 1042, // Cait Sith: Lv.+ (Increases Cait Sith's base level above 99)
     ENHANCES_MANA_CEDE        = 74,   // Bonus % to Mana Cede effect, +1 = 1%
+    SUMMONING_MAGIC_CAST      = 1078, // Summoning magic casting time reduction in seconds
     SPIRIT_SPELLCAST_DELAY    = 1179, // Reduces the time between spellcasts of a summoned spirit by seconds provided
 
     // Blue Mage
@@ -668,12 +669,13 @@ enum class Mod
     LIFE_CYCLE_EFFECT    = 1029, // Adds bonus HP% returned to the luopan when using Life Cycle
     AURA_SIZE            = 1030, // Used to extend aura size, the formula is 6.25 + (PEntity->getMod(Mod::AURA_SIZE) / 100) so adding 100 will make this 7.25
 
-    ENSPELL           = 341, // stores the type of enspell active (0 if nothing)
-    ENSPELL_DMG       = 343, // stores the base damage of the enspell before reductions
-    ENSPELL_DMG_BONUS = 432, //
-    ENSPELL_CHANCE    = 856, // Chance of enspell activating (0 = 100%, 10 = 10%, 30 = 30%, ...)
-    SPIKES            = 342, // store the type of spike spell active (0 if nothing)
-    SPIKES_DMG        = 344, // stores the base damage of the spikes before reductions
+    ENSPELL           = 341,  // stores the type of enspell active (0 if nothing)
+    ENSPELL_DMG       = 343,  // stores the base damage of the enspell before reductions
+    ENSPELL_DMG_BONUS = 432,  //
+    ENSPELL_CHANCE    = 856,  // Chance of enspell activating (0 = 100%, 10 = 10%, 30 = 30%, ...)
+    SPIKES            = 342,  // store the type of spike spell active (0 if nothing)
+    SPIKES_DMG        = 344,  // stores the base damage of the spikes before reductions
+    SPIKES_DMG_BONUS  = 1079, // Increases Blaze/Ice/Shock spikes damage by percentage (e.g. mod value 50 = +50% spikes damage)
 
     TP_BONUS    = 345, //
     SAVETP      = 880, // SAVETP Effect for Miser's Roll / ATMA / Hagakure.
@@ -994,24 +996,26 @@ enum class Mod
     PET_DMG_TAKEN_PHYSICAL = 1154, // Percent increase/decrease in pet physical damage taken for the target.
     PET_DMG_TAKEN_MAGICAL  = 1155, // Percent increase/decrease in pet physical damage taken for the target.
     PET_DMG_TAKEN_BREATH   = 1156, // Percent increase/decrease in pet physical damage taken for the target.
-    // 1157 FREE
-    FIRE_EEM               = 1158, // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
-    ICE_EEM                = 1159, // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
-    WIND_EEM               = 1160, // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
-    EARTH_EEM              = 1161, // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
-    THUNDER_EEM            = 1162, // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
-    WATER_EEM              = 1163, // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
-    LIGHT_EEM              = 1164, // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
-    DARK_EEM               = 1165, // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
-    TAME_SUCCESS_RATE      = 1166, // Tame Success Rate +
-    RAMPART_MAGIC_SHIELD   = 1167, // Rampart Magic Shield
-    CRITHITRATE_SLOT       = 1168, // CRITHITRATE for slot
-    ATT_SLOT               = 1169, // ATT for slot
-    UDMG                   = 1170, // Uncapped dmg taken (all types)
+                                   // 1157 FREE
+    FIRE_EEM             = 1158,   // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
+    ICE_EEM              = 1159,   // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
+    WIND_EEM             = 1160,   // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
+    EARTH_EEM            = 1161,   // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
+    THUNDER_EEM          = 1162,   // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
+    WATER_EEM            = 1163,   // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
+    LIGHT_EEM            = 1164,   // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
+    DARK_EEM             = 1165,   // Elemental Evasion Multiplier (Known as SDT in common magic accuracy formulas) (out of 100)
+    TAME_SUCCESS_RATE    = 1166,   // Tame Success Rate +
+    RAMPART_MAGIC_SHIELD = 1167,   // Rampart Magic Shield
+    CRITHITRATE_SLOT     = 1168,   // CRITHITRATE for slot
+    ATT_SLOT             = 1169,   // ATT for slot
+    UDMG                 = 1170,   // Uncapped dmg taken (all types)
 
     // Per PR comment - New ASB section starting at 2000
-    TANDEM_STRIKE = 2000, // Beastmaster trait - provides acc/macc to master and pet when both engage the same target
-    TANDEM_BLOW   = 2001, // Beastmaster trait - provides subtle blow to master and pet when both engage the same target
+    TANDEM_STRIKE         = 2000, // Beastmaster trait - provides acc/macc to master and pet when both engage the same target
+    TANDEM_BLOW           = 2001, // Beastmaster trait - provides subtle blow to master and pet when both engage the same target
+    INVISIBLE_EQUIP_BOOST = 2002, // boost for invisible duration (base of 0 means no change, 50 means 50% boost in duration, -50 means 50% reduction in duration)
+    SNEAK_EQUIP_BOOST     = 2003, // boost for invisible duration (base of 0 means no change, 50 means 50% boost in duration, -50 means 50% reduction in duration)
 
     // IF YOU ADD ANY NEW MODIFIER HERE, ADD IT IN scripts/enum/mod.lua ASWELL!
 
@@ -1025,7 +1029,7 @@ enum class Mod
     // 217 to 223
     // 271 to 280
     //
-    // 1076 and onward are RESERVED for LSB/core values
+    // SPARE = 1080 and onward
     //
     // ANY ASB ADDITIONS SHOULD BE 2002++
 };

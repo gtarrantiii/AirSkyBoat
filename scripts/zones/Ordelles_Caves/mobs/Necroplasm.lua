@@ -5,13 +5,13 @@
 -----------------------------------
 local ID = require("scripts/zones/Ordelles_Caves/IDs")
 require("scripts/globals/quests")
-require("scripts/globals/status")
 require("scripts/globals/mobs")
 -----------------------------------
 local entity = {}
 
 entity.onMobInitialize = function(mob)
     mob:setMobMod(xi.mobMod.ADD_EFFECT, 1)
+    mob:setMobMod(xi.mobMod.IDLE_DESPAWN, 180)
 end
 
 entity.onAdditionalEffect = function(mob, target, damage)

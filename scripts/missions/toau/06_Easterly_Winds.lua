@@ -5,10 +5,8 @@
 -- !addmission 4 5
 -- Halver : !pos 2 0.1 0.1 233
 -----------------------------------
-require('scripts/globals/items')
 require('scripts/globals/missions')
 require('scripts/globals/npc_util')
-require('scripts/globals/keyitems')
 require('scripts/globals/interaction/mission')
 require('scripts/globals/zone')
 -----------------------------------
@@ -17,7 +15,7 @@ local mission = Mission:new(xi.mission.log_id.TOAU, xi.mission.id.toau.EASTERLY_
 
 mission.reward =
 {
-    nextMission = { xi.mission.log_id.TOAU, xi.mission.id.toau.WESTERLY_WINDS },
+    nextMission = { xi.mission.log_id.TOAU, xi.mission.id.toau.WESTERLY_WINDS }
 }
 
 mission.sections =
@@ -36,6 +34,13 @@ mission.sections =
                 end,
             },
         },
+    },
+
+    {
+        check = function(player, currentMission, missionStatus, vars)
+            return currentMission == mission.missionId and
+                os.time() >= vars.Stage
+        end,
 
         [xi.zone.RULUDE_GARDENS] =
         {

@@ -2,8 +2,6 @@
 -- Area: Monarch Linn
 --  Mob: Mammet-19 Epsilon
 -----------------------------------
-require("scripts/globals/status")
------------------------------------
 local entity = {}
 
 local forms =
@@ -36,6 +34,10 @@ local tpMoves =
 
 entity.onMobSpawn = function(mob)
     mob:setMagicCastingEnabled(false)
+end
+
+entity.onMobEngaged = function(mob, target)
+    mob:setLocalVar("formTimeTracker", 0)
 end
 
 entity.onMobFight = function(mob, target)

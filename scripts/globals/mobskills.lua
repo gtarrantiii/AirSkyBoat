@@ -7,7 +7,6 @@
 require("scripts/globals/magicburst")
 require("scripts/globals/magic")
 require("scripts/globals/utils")
-require("scripts/globals/msg")
 require("scripts/globals/weaponskills")
 require("scripts/globals/damage")
 -----------------------------------
@@ -179,6 +178,13 @@ xi.mobskills.mobPhysicalMove = function(mob, target, skill, numberofhits, accmod
 
     --work out hit rate for mobs
     local hitrate = xi.weaponskills.getHitRate(mob, target, 0, 0)
+
+    if
+        accmod and
+        accmod ~= 0
+    then
+        hitrate = utils.clamp((hitrate * accmod), 0.2, 0.95)
+    end
 
     if tpeffect == xi.mobskills.physicalTpBonus.RANGED then
         hitrate = xi.weaponskills.getRangedHitRate(mob, target, 0, 0)
@@ -519,7 +525,7 @@ xi.mobskills.mobBreathMove = function(mob, target, percent, base, element, cap)
     end
 
     -- Deal bonus damage vs mob ecosystem
-    local systemBonus = utils.getSystemStrengthBonus(mob:getSystem(), target:getSystem())
+    local systemBonus = utils.getEcosystemStrengthBonus(mob:getEcosystem(), target:getEcosystem())
     damage = damage + damage * (systemBonus * 0.25)
 
     -- elemental resistence
@@ -661,6 +667,13 @@ xi.mobskills.mobFinalAdjustments = function(dmg, mob, skill, target, attackType,
     end
 
     if attackType == xi.attackType.MAGICAL then
+        if
+            target:getMod(xi.mod.MAGIC_NULL) > 0 and
+            math.random(1, 100) <= target:getMod(xi.mod.MAGIC_NULL)
+        then
+            return 0
+        end
+
         dmg = utils.oneforall(target, dmg)
         dmg = utils.rampart(target, dmg)
 

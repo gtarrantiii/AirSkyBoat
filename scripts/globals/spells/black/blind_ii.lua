@@ -2,8 +2,6 @@
 -- Spell: Blind II
 -----------------------------------
 require("scripts/globals/magic")
-require("scripts/globals/msg")
-require("scripts/globals/status")
 require("scripts/globals/utils")
 -----------------------------------
 local spellObject = {}
@@ -24,7 +22,7 @@ spellObject.onSpellCast = function(caster, target, spell)
     -- Base power
     -- Min cap: 15 at -80 dINT
     -- Max cap: 90 at 120 dINT
-    local basePotency = utils.clamp(math.floor(dINT / 3 * 8 + 45), 15, 90)
+    local basePotency = utils.clamp(math.floor(dINT * 3 / 8 + 45), 15, 90)
 
     local potency = xi.magic.calculatePotency(basePotency, spell:getSkillType(), caster, target)
 
@@ -52,6 +50,8 @@ spellObject.onSpellCast = function(caster, target, spell)
 
         if target:addStatusEffect(params.effect, potency, 0, resduration, 0, params.tier) then
             spell:setMsg(xi.msg.basic.MAGIC_ENFEEB_IS)
+            -- only increment the resbuild if successful (not on a no effect)
+            xi.magic.incrementBuildDuration(target, params.effect, caster)
             xi.magic.handleBurstMsg(caster, target, spell)
         else
             spell:setMsg(xi.msg.basic.MAGIC_NO_EFFECT)

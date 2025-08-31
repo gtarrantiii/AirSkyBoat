@@ -1,18 +1,6 @@
 ﻿{
   "configurations": [
     {
-      "name": "x64-Debug",
-      "generator": "Ninja",
-      "configurationType": "Debug",
-      "buildRoot": "${projectDir}\\build\\${name}",
-      "installRoot": "${projectDir}\\build\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "variables": []
-    },
-    {
       "name": "x64-Release",
       "generator": "Ninja",
       "configurationType": "RelWithDebInfo",
@@ -21,20 +9,7 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "variables": []
-    },
-    {
-      "name": "x64-Debug-Tracy",
-      "generator": "Ninja",
-      "configurationType": "Debug",
-      "buildRoot": "${projectDir}\\build\\${name}",
-      "installRoot": "${projectDir}\\build\\${name}",
-      "cmakeCommandArgs": "-DTRACY_ENABLE=ON",
-      "buildCommandArgs": "",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "variables": []
+      "inheritEnvironments": [ "msvc_x64_x64" ]
     },
     {
       "name": "x64-Release-Tracy",
@@ -45,11 +20,10 @@
       "cmakeCommandArgs": "-DTRACY_ENABLE=ON",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64_x64" ],
-      "variables": []
+      "inheritEnvironments": [ "msvc_x64_x64" ]
     },
     {
-      "name": "x86-Debug",
+      "name": "x64-Debug",
       "generator": "Ninja",
       "configurationType": "Debug",
       "buildRoot": "${projectDir}\\build\\${name}",
@@ -57,20 +31,18 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x86" ],
-      "variables": []
+      "inheritEnvironments": [ "msvc_x64_x64" ]
     },
     {
-      "name": "x86-Release",
+      "name": "x64-Debug-Tracy",
       "generator": "Ninja",
-      "configurationType": "RelWithDebInfo",
+      "configurationType": "Debug",
       "buildRoot": "${projectDir}\\build\\${name}",
       "installRoot": "${projectDir}\\build\\${name}",
-      "cmakeCommandArgs": "",
+      "cmakeCommandArgs": "-DTRACY_ENABLE=ON",
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x86" ],
-      "variables": []
+      "inheritEnvironments": [ "msvc_x64_x64" ]
     }
   ]
 }

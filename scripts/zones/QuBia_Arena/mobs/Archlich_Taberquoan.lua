@@ -4,12 +4,15 @@
 -- Mission 5-1 BCNM Fight
 -----------------------------------
 mixins = { require("scripts/mixins/job_special") }
-require("scripts/globals/status")
 -----------------------------------
 local entity = {}
 
 entity.onMobInitialize = function(mob)
     mob:setMobMod(xi.mobMod.SOUND_RANGE, 32)
+end
+
+entity.onMobEngaged = function(mob, target)
+    mob:setLocalVar("RepopWarriors", 0)
 end
 
 entity.onMobFight = function(mob, target)
